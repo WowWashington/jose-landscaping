@@ -54,13 +54,17 @@ export default function ProjectsPage() {
 
   const filtered = useMemo(() => {
     let result = search
-      ? projects.filter(
-          (p) =>
-            p.name.toLowerCase().includes(search.toLowerCase()) ||
-            p.contact?.name?.toLowerCase().includes(search.toLowerCase()) ||
-            p.address?.toLowerCase().includes(search.toLowerCase()) ||
-            p.quoteNumber?.toLowerCase().includes(search.toLowerCase())
-        )
+      ? projects.filter((p) => {
+          const q = search.toLowerCase();
+          return (
+            p.name.toLowerCase().includes(q) ||
+            p.contact?.name?.toLowerCase().includes(q) ||
+            p.address?.toLowerCase().includes(q) ||
+            p.quoteNumber?.toLowerCase().includes(q) ||
+            p.assignedCrew.some((name) => name.toLowerCase().includes(q)) ||
+            (p.leadCrewName?.toLowerCase().includes(q) ?? false)
+          );
+        })
       : [...projects];
 
     if (sort === "name") {
