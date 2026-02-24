@@ -1,65 +1,167 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
+import { Plus, ArrowUpDown } from "lucide-react";
+import { ProjectCard } from "@/components/projects/project-card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+type ProjectListItem = {
+  id: string;
+  name: string;
+  quoteNumber: string | null;
+  status: string | null;
+  division: string | null;
+  address: string | null;
+  dueDate: string | null;
+  confirmed: boolean | null;
+  statusNotes: string | null;
+  assignedCrew: string[];
+  coverPhoto: string | null;
+  contact: { name: string | null } | null;
+  activityCount: number;
+  totalCost: number;
+  startDate: string | null;
+  totalHours: number;
+};
+
+type SortOption = "newest" | "name" | "dueDate";
+
+const STATUSES = ["all", "draft", "quoted", "active", "completed", "cancelled"];
+
+export default function ProjectsPage() {
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortOption>("newest");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    const params = filter !== "all" ? `?status=${filter}` : "";
+    fetch(`/api/projects${params}`)
+      .then((r) => r.json())
+      .then((data) => setProjects(data))
+      .finally(() => setLoading(false));
+  }, [filter]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const filtered = useMemo(() => {
+    let result = search
+      ? projects.filter(
+          (p) =>
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            p.contact?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            p.address?.toLowerCase().includes(search.toLowerCase()) ||
+            p.quoteNumber?.toLowerCase().includes(search.toLowerCase())
+        )
+      : [...projects];
+
+    if (sort === "name") {
+      result.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sort === "dueDate") {
+      result.sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate.localeCompare(b.dueDate);
+      });
+    }
+    // "newest" keeps API order (desc createdAt)
+
+    return result;
+  }, [projects, search, sort]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+        <Link
+          href="/projects/new"
+          className="inline-flex items-center gap-2 rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-800"
+        >
+          <Plus className="h-4 w-4" />
+          New Project
+        </Link>
+      </div>
+
+      <Input
+        placeholder="Search projects..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mb-3"
+      />
+
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex gap-1.5 flex-wrap">
+          {STATUSES.map((s) => (
+            <Badge
+              key={s}
+              variant={filter === s ? "default" : "outline"}
+              className="cursor-pointer capitalize"
+              onClick={() => setFilter(s)}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              {s}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          {(["newest", "name", "dueDate"] as SortOption[]).map((s) => (
+            <Button
+              key={s}
+              variant={sort === s ? "default" : "ghost"}
+              size="sm"
+              className="h-7 text-xs px-2"
+              onClick={() => setSort(s)}
             >
-              Learning
-            </a>{" "}
-            center.
+              {s === "newest" ? "New" : s === "name" ? "Name" : "Due"}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>No projects yet.</p>
+          <p className="text-sm mt-1">
+            Create your first project to get started.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((p) => (
+            <ProjectCard
+              key={p.id}
+              project={{
+                id: p.id,
+                name: p.name,
+                quoteNumber: p.quoteNumber ?? null,
+                status: p.status,
+                division: p.division,
+                address: p.address,
+                contactName: p.contact?.name ?? null,
+                totalCost: p.totalCost,
+                activityCount: p.activityCount,
+                dueDate: p.dueDate,
+                confirmed: p.confirmed,
+                statusNotes: p.statusNotes,
+                assignedCrew: p.assignedCrew ?? [],
+                coverPhoto: p.coverPhoto ?? null,
+                startDate: p.startDate ?? null,
+                totalHours: p.totalHours ?? 0,
+              }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          ))}
         </div>
-      </main>
+      )}
     </div>
   );
 }
