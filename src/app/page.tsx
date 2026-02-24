@@ -19,6 +19,7 @@ type ProjectListItem = {
   confirmed: boolean | null;
   statusNotes: string | null;
   assignedCrew: string[];
+  leadCrewName: string | null;
   coverPhoto: string | null;
   contact: { name: string | null } | null;
   activityCount: number;
@@ -154,6 +155,7 @@ export default function ProjectsPage() {
                 confirmed: p.confirmed,
                 statusNotes: p.statusNotes,
                 assignedCrew: p.assignedCrew ?? [],
+                leadCrewName: p.leadCrewName ?? null,
                 coverPhoto: p.coverPhoto ?? null,
                 startDate: p.startDate ?? null,
                 totalHours: p.totalHours ?? 0,
