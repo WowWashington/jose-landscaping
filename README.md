@@ -161,4 +161,4 @@ See [`state.md`](./state.md) for the full API route table.
 
 ## License
 
-Private — not open source.
+MIT — see [LICENSE](./LICENSE).
