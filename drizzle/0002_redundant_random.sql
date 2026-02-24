@@ -1,0 +1,1 @@
+ALTER TABLE `contacts` ADD `last_contact_date` text;

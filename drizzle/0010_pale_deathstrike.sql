@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `lead_crew_id` text;

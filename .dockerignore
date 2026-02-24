@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.gitignore
+data/
+public/uploads/
+*.md
+.env*
+.DS_Store

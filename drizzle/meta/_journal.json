@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1771902307419,
+      "tag": "0000_damp_red_ghost",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1771906251377,
+      "tag": "0001_bouncy_malice",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1771907400431,
+      "tag": "0002_redundant_random",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1771907701111,
+      "tag": "0003_many_paibok",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1771908234201,
+      "tag": "0004_jazzy_havok",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1771909247934,
+      "tag": "0005_marvelous_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1771909756684,
+      "tag": "0006_lumpy_chameleon",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1771910118059,
+      "tag": "0007_silent_butterfly",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1771911882774,
+      "tag": "0008_flowery_tarot",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1771913329602,
+      "tag": "0009_modern_rumiko_fujikawa",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1771913607516,
+      "tag": "0010_pale_deathstrike",
+      "breakpoints": true
+    }
+  ]
+}

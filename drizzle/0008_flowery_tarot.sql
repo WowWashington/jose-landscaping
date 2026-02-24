@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `quote_number` text;
