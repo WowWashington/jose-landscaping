@@ -1,0 +1,46 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/field-service:${{ github.sha }} \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/field-service:latest \
+            .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/field-service --all-tags
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - app-name: jose-services-app
+            secret-key: PUBLISH_PROFILE_jose_services_app
+          # Add more instances here:
+          # - app-name: brian-services-app
+          #   secret-key: PUBLISH_PROFILE_brian_services_app
+    steps:
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ matrix.app-name }}
+          publish-profile: ${{ secrets[matrix.secret-key] }}
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/field-service:${{ github.sha }}

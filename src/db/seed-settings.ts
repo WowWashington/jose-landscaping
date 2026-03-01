@@ -1,9 +1,30 @@
-import { db } from "@/db";
-import { appSettings } from "@/db/schema";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { appSettings } from "./schema";
+import path from "path";
+import { mkdirSync } from "fs";
 
-db.insert(appSettings)
-  .values({ key: "maskContactsForWorkers", value: "true" })
-  .onConflictDoNothing()
-  .run();
+const defaults = [
+  { key: "maskContactsForWorkers", value: "true" },
+  { key: "businessName", value: "Landscaping and Services" },
+  { key: "businessSubtitle", value: "Landscaping & Outdoor Services" },
+  { key: "enableYardCare", value: "true" },
+  { key: "enableContracting", value: "true" },
+];
+
+const dbPath = process.env.DB_PATH || path.join(process.cwd(), "data", "jose.db");
+mkdirSync(path.dirname(dbPath), { recursive: true });
+
+const sqlite = new Database(dbPath);
+sqlite.pragma("journal_mode = WAL");
+const db = drizzle(sqlite);
+
+for (const setting of defaults) {
+  db.insert(appSettings)
+    .values(setting)
+    .onConflictDoNothing()
+    .run();
+}
 
 console.log("Settings seeded.");
+sqlite.close();

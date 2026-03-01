@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactPicker } from "@/components/contacts/contact-picker";
 import { CrewPicker } from "@/components/crew/crew-picker";
 import { DIVISION_OPTIONS } from "@/types";
+import { useSettings } from "@/lib/use-settings";
 import { cn } from "@/lib/utils";
 
 type ProjectFormData = {
@@ -31,15 +32,30 @@ export function ProjectForm({
   onSave: (data: ProjectFormData) => Promise<void>;
   onCancel?: () => void;
 }) {
+  const { settings } = useSettings();
+
+  // Filter divisions based on settings
+  const enabledDivisions = DIVISION_OPTIONS.filter((d) => {
+    if (d.value === "yard_care") return settings.enableYardCare;
+    if (d.value === "general_contracting") return settings.enableContracting;
+    return true;
+  });
+
   const [form, setForm] = useState<ProjectFormData>({
     name: initial?.name ?? "",
     description: initial?.description ?? "",
     address: initial?.address ?? "",
     contactId: initial?.contactId ?? null,
     leadCrewId: initial?.leadCrewId ?? null,
-    startDate: initial?.startDate ?? "",
+    startDate: initial?.startDate?.split("T")[0] ?? "",
     notes: initial?.notes ?? "",
-    division: initial?.division ?? "",
+    division: initial?.division ?? (enabledDivisions.length === 1 ? enabledDivisions[0].value : ""),
+  });
+  const [startTime, setStartTime] = useState(() => {
+    if (initial?.startDate?.includes("T")) {
+      return initial.startDate.split("T")[1];
+    }
+    return "";
   });
   const [saving, setSaving] = useState(false);
 
@@ -51,7 +67,11 @@ export function ProjectForm({
     if (!form.name.trim() || !form.division) return;
     setSaving(true);
     try {
-      await onSave(form);
+      const dataToSave = { ...form };
+      if (dataToSave.startDate && startTime) {
+        dataToSave.startDate = `${dataToSave.startDate}T${startTime}`;
+      }
+      await onSave(dataToSave);
     } finally {
       setSaving(false);
     }
@@ -64,13 +84,13 @@ export function ProjectForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Division selector — prominent, first choice */}
-          <div>
+          {/* Division selector — prominent, first choice (hidden if only one) */}
+          {enabledDivisions.length > 1 && <div>
             <Label className="mb-2 block">
               Division <span className="text-destructive">*</span>
             </Label>
             <div className="grid grid-cols-2 gap-3">
-              {DIVISION_OPTIONS.map((d) => (
+              {enabledDivisions.map((d) => (
                 <button
                   key={d.value}
                   type="button"
@@ -87,7 +107,7 @@ export function ProjectForm({
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           <div>
             <Label htmlFor="name">
@@ -138,14 +158,25 @@ export function ProjectForm({
               placeholder="Project site address"
             />
           </div>
-          <div>
-            <Label htmlFor="startDate">Start Date</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={form.startDate}
-              onChange={(e) => update("startDate", e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={form.startDate}
+                onChange={(e) => update("startDate", e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="startTime">Start Time</Label>
+              <Input
+                id="startTime"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
           </div>
           <div>
             <Label htmlFor="notes">Notes</Label>

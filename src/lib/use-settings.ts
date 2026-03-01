@@ -2,12 +2,20 @@
 
 import { useState, useEffect } from "react";
 
-type AppSettings = {
+export type AppSettings = {
   maskContactsForWorkers: boolean;
+  businessName: string;
+  businessSubtitle: string;
+  enableYardCare: boolean;
+  enableContracting: boolean;
 };
 
-const defaultSettings: AppSettings = {
+export const defaultSettings: AppSettings = {
   maskContactsForWorkers: true,
+  businessName: "Landscaping and Services",
+  businessSubtitle: "Landscaping & Outdoor Services",
+  enableYardCare: true,
+  enableContracting: true,
 };
 
 export function useSettings(): { settings: AppSettings; loading: boolean; refresh: () => void } {
@@ -20,6 +28,10 @@ export function useSettings(): { settings: AppSettings; loading: boolean; refres
       .then((data) => {
         setSettings({
           maskContactsForWorkers: data.maskContactsForWorkers !== "false",
+          businessName: data.businessName || defaultSettings.businessName,
+          businessSubtitle: data.businessSubtitle || defaultSettings.businessSubtitle,
+          enableYardCare: data.enableYardCare !== "false",
+          enableContracting: data.enableContracting !== "false",
         });
         setLoading(false);
       })

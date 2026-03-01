@@ -7,7 +7,7 @@
 import type { Project, ProjectActivity } from "@/types";
 import { STATUS_LABELS, DIVISION_LABELS, UNIT_LABELS } from "@/types";
 
-export function formatProjectEmailText(project: Project): string {
+export function formatProjectEmailText(project: Project, businessName?: string): string {
   const activities = project.activities ?? [];
   const summary = computeSummary(activities);
   const now = new Date();
@@ -81,7 +81,7 @@ export function formatProjectEmailText(project: Project): string {
 
   lines.push("");
   lines.push("---");
-  lines.push("Jose's Yard Care Project Estimator");
+  lines.push(`${businessName ?? "Landscaping and Services"} Project Estimator`);
 
   return lines.join("\n");
 }

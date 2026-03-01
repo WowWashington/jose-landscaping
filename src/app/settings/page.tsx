@@ -3,14 +3,19 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-import { Settings, Shield } from "lucide-react";
+import { Settings, Shield, Building2, Layers } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function SettingsPage() {
   const { isOwner, loading: authLoading } = useAuth();
   const router = useRouter();
   const [maskContacts, setMaskContacts] = useState(true);
+  const [businessName, setBusinessName] = useState("Landscaping and Services");
+  const [businessSubtitle, setBusinessSubtitle] = useState("Landscaping & Outdoor Services");
+  const [enableYardCare, setEnableYardCare] = useState(true);
+  const [enableContracting, setEnableContracting] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -19,6 +24,10 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data) => {
         setMaskContacts(data.maskContactsForWorkers !== "false");
+        if (data.businessName) setBusinessName(data.businessName);
+        if (data.businessSubtitle) setBusinessSubtitle(data.businessSubtitle);
+        setEnableYardCare(data.enableYardCare !== "false");
+        setEnableContracting(data.enableContracting !== "false");
         setLoaded(true);
       });
   }, []);
@@ -29,15 +38,31 @@ export default function SettingsPage() {
     }
   }, [authLoading, isOwner, router]);
 
-  async function toggleMask(checked: boolean) {
-    setMaskContacts(checked);
+  async function saveSetting(key: string, value: string) {
     setSaving(true);
     await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: "maskContactsForWorkers", value: String(checked) }),
+      body: JSON.stringify({ key, value }),
     });
     setSaving(false);
+  }
+
+  async function toggleMask(checked: boolean) {
+    setMaskContacts(checked);
+    await saveSetting("maskContactsForWorkers", String(checked));
+  }
+
+  async function toggleYardCare(checked: boolean) {
+    if (!checked && !enableContracting) return;
+    setEnableYardCare(checked);
+    await saveSetting("enableYardCare", String(checked));
+  }
+
+  async function toggleContracting(checked: boolean) {
+    if (!checked && !enableYardCare) return;
+    setEnableContracting(checked);
+    await saveSetting("enableContracting", String(checked));
   }
 
   if (authLoading || !loaded) {
@@ -47,11 +72,91 @@ export default function SettingsPage() {
   if (!isOwner) return null;
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-4">
       <h1 className="text-xl font-semibold flex items-center gap-2 mb-6">
         <Settings className="h-5 w-5" /> Settings
       </h1>
 
+      {/* Business Name */}
+      <div className="rounded-lg border p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <Building2 className="h-5 w-5 text-muted-foreground" />
+          <h2 className="font-medium">Business</h2>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="businessName" className="text-sm font-medium">
+              Business Name
+            </Label>
+            <Input
+              id="businessName"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              onBlur={() => saveSetting("businessName", businessName)}
+              placeholder="Your business name"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Shown in the sidebar, login page, PDF estimates, and emails.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="businessSubtitle" className="text-sm font-medium">
+              Subtitle / Tagline
+            </Label>
+            <Input
+              id="businessSubtitle"
+              value={businessSubtitle}
+              onChange={(e) => setBusinessSubtitle(e.target.value)}
+              onBlur={() => saveSetting("businessSubtitle", businessSubtitle)}
+              placeholder="e.g., Landscaping & Outdoor Services"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Shown below the business name on PDF estimates.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Divisions */}
+      <div className="rounded-lg border p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <Layers className="h-5 w-5 text-muted-foreground" />
+          <h2 className="font-medium">Divisions</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Enable or disable service divisions. At least one must remain enabled.
+        </p>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="yard-care" className="text-sm font-medium">
+              🌿 Yard Care & Landscaping
+            </Label>
+            <Switch
+              id="yard-care"
+              checked={enableYardCare}
+              onCheckedChange={toggleYardCare}
+              disabled={saving || (enableYardCare && !enableContracting)}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="contracting" className="text-sm font-medium">
+              🔨 General Contracting
+            </Label>
+            <Switch
+              id="contracting"
+              checked={enableContracting}
+              onCheckedChange={toggleContracting}
+              disabled={saving || (enableContracting && !enableYardCare)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Privacy */}
       <div className="rounded-lg border p-4 space-y-4">
         <div className="flex items-center gap-3">
           <Shield className="h-5 w-5 text-muted-foreground" />

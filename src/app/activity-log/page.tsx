@@ -12,6 +12,8 @@ import {
   FolderPlus,
   RotateCcw,
   ArrowRight,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -138,6 +140,22 @@ function describeAction(entry: LogEntry): {
     };
   }
 
+  if (action === "login" && entity === "session") {
+    return {
+      icon: <LogIn className="h-4 w-4 text-sky-600" />,
+      label: "Logged in",
+      color: "bg-sky-50 text-sky-700 border-sky-200",
+    };
+  }
+
+  if (action === "logout" && entity === "session") {
+    return {
+      icon: <LogOut className="h-4 w-4 text-gray-500" />,
+      label: "Logged out",
+      color: "bg-gray-50 text-gray-600 border-gray-200",
+    };
+  }
+
   return {
     icon: <ArrowRight className="h-4 w-4 text-gray-500" />,
     label: `${action} ${entity}`,
@@ -182,6 +200,9 @@ export default function ActivityLogPage() {
   ).length;
   const statusChanges = entries.filter(
     (e) => e.action === "status_changed" && e.entity === "project"
+  ).length;
+  const logins = entries.filter(
+    (e) => e.action === "login" && e.entity === "session"
   ).length;
 
   if (!canEdit) {
@@ -252,6 +273,11 @@ export default function ActivityLogPage() {
           {statusChanges > 0 && (
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
               {statusChanges} status change{statusChanges !== 1 ? "s" : ""}
+            </Badge>
+          )}
+          {logins > 0 && (
+            <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200">
+              {logins} login{logins !== 1 ? "s" : ""}
             </Badge>
           )}
         </div>

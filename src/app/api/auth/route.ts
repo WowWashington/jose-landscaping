@@ -3,6 +3,8 @@ import { users } from "@/db/schema";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyPin } from "@/lib/auth-utils";
+import { logChange } from "@/lib/log-change";
+import { getSessionUser } from "@/lib/get-session-user";
 
 const NINETY_DAYS = 60 * 60 * 24 * 90;
 
@@ -112,6 +114,14 @@ export async function POST(request: NextRequest) {
       maxAge: NINETY_DAYS,
     });
 
+    // Log successful login
+    logChange({
+      userId: user.id,
+      userName: user.name,
+      action: "login",
+      entity: "session",
+    });
+
     // Return user data (exclude pin)
     const { pin: _pin, ...userData } = user;
     return NextResponse.json(userData);
@@ -127,12 +137,25 @@ export async function POST(request: NextRequest) {
 // DELETE /api/auth — logout (clear session cookie)
 export async function DELETE() {
   try {
+    // Get user before clearing session cookie
+    const sessionUser = await getSessionUser();
+
     const cookieStore = await cookies();
     cookieStore.set("session", "", {
       httpOnly: true,
       path: "/",
       maxAge: 0,
     });
+
+    // Log logout
+    if (sessionUser) {
+      logChange({
+        userId: sessionUser.id,
+        userName: sessionUser.name,
+        action: "logout",
+        entity: "session",
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

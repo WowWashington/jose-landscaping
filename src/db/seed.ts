@@ -303,12 +303,12 @@ const seedData: Category[] = [
 ];
 
 function seed() {
-  const dataDir = path.join(process.cwd(), "data");
+  const dbPath = process.env.DB_PATH || path.join(process.cwd(), "data", "jose.db");
+  const dataDir = path.dirname(dbPath);
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  const dbPath = path.join(dataDir, "jose.db");
   const sqlite = new Database(dbPath);
   sqlite.pragma("journal_mode = WAL");
   const db = drizzle(sqlite);

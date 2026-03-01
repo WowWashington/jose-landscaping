@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { AppShell } from "@/components/layout/app-shell";
+import { getSettings } from "@/lib/get-settings";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,10 +15,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Jose's Yard Care",
-  description: "Project estimator for landscaping and yard care",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { businessName, businessSubtitle } = getSettings();
+  return {
+    title: businessName,
+    description: businessSubtitle,
+  };
+}
 
 export default function RootLayout({
   children,

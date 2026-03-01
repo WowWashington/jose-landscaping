@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import type { CrewMember, AppUser } from "@/types";
 import { useAuth } from "@/lib/auth-context";
+import { useSettings } from "@/lib/use-settings";
 import {
   Plus,
   X,
@@ -29,12 +30,27 @@ import {
   Mail,
   MessageSquare,
   UserPlus,
+  Eye,
 } from "lucide-react";
+
+function formatLastSeen(isoStr: string): string {
+  const d = new Date(isoStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 export default function CrewPage() {
   const { user: currentUser, canEdit } = useAuth();
+  const { settings } = useSettings();
   const [members, setMembers] = useState<CrewMember[]>([]);
   const [allUsers, setAllUsers] = useState<AppUser[]>([]);
+  const [lastSeen, setLastSeen] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,10 +76,12 @@ export default function CrewPage() {
     Promise.all([
       fetch("/api/crew").then((r) => r.json()),
       fetch("/api/users").then((r) => r.json()),
+      fetch("/api/crew/last-seen").then((r) => r.json()),
     ])
-      .then(([c, u]) => {
+      .then(([c, u, ls]) => {
         setMembers(c);
         setAllUsers(u);
+        setLastSeen(ls);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -164,7 +182,7 @@ export default function CrewPage() {
     return [
       `Hi ${inviteMember?.name}!`,
       ``,
-      `${senderName} has added you to Jose's Yard Care.`,
+      `${senderName} has added you to ${settings.businessName}.`,
       ``,
       `Your login:`,
       `  Name: ${inviteMember?.name}`,
@@ -177,7 +195,7 @@ export default function CrewPage() {
   }
 
   function sendViaEmail() {
-    const subject = encodeURIComponent("You're invited to Jose's Yard Care");
+    const subject = encodeURIComponent(`You're invited to ${settings.businessName}`);
     const body = encodeURIComponent(buildWelcomeMessage());
     const to = encodeURIComponent(inviteEmail);
     window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_self");
@@ -362,6 +380,12 @@ export default function CrewPage() {
                       <div className="flex items-center gap-2">
                         <Wrench className="h-3.5 w-3.5" />
                         <span className="line-clamp-2">{m.tasks}</span>
+                      </div>
+                    )}
+                    {lastSeen[m.id] && (
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Last seen {formatLastSeen(lastSeen[m.id])}</span>
                       </div>
                     )}
                   </div>

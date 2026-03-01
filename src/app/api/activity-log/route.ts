@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
       "status_changed",  // quote sent, project completed, etc.
       "completed",       // task completed
       "uncompleted",     // task re-opened
+      "login",           // user logged in
+      "logout",          // user logged out
     ];
 
     const entries = db

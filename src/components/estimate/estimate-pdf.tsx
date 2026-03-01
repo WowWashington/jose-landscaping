@@ -179,15 +179,15 @@ function formatMoney(n: number): string {
   }).format(n);
 }
 
-export function EstimatePDF({ data }: { data: EstimateData }) {
+export function EstimatePDF({ data, businessName, businessSubtitle }: { data: EstimateData; businessName?: string; businessSubtitle?: string }) {
   return (
     <Document>
       <Page size="LETTER" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.businessName}>Jose&apos;s Yard Care</Text>
+          <Text style={styles.businessName}>{businessName ?? "Landscaping and Services"}</Text>
           <Text style={styles.subtitle}>
-            Landscaping &amp; Outdoor Services
+            {businessSubtitle ?? "Landscaping & Outdoor Services"}
           </Text>
         </View>
 

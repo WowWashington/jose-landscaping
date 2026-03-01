@@ -106,12 +106,25 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
       })
     : null;
 
-  const startDateLabel = project.startDate
-    ? new Date(project.startDate + "T00:00:00").toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
-    : null;
+  const startDateLabel = (() => {
+    if (!project.startDate) return null;
+    const hasTime = project.startDate.includes("T");
+    const dateStr = hasTime ? project.startDate : project.startDate + "T00:00:00";
+    const d = new Date(dateStr);
+    const datePart = d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    if (hasTime) {
+      const timePart = d.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+      return `${datePart} · ${timePart}`;
+    }
+    return datePart;
+  })();
 
   const cardBorder = isLandscaping
     ? "border-green-200/60 dark:border-green-900/30"

@@ -15,6 +15,7 @@ export function LoginScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [setupMode, setSetupMode] = useState(false);
+  const [businessName, setBusinessName] = useState("Landscaping and Services");
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -59,11 +60,14 @@ export function LoginScreen() {
   const [hasUsers, setHasUsers] = useState(true);
 
   if (!checked) {
-    fetch("/api/users")
-      .then((r) => r.json())
-      .then((users) => {
+    Promise.all([
+      fetch("/api/users").then((r) => r.json()),
+      fetch("/api/settings").then((r) => r.json()).catch(() => ({})),
+    ])
+      .then(([users, settings]) => {
         setHasUsers(users.length > 0);
         if (users.length === 0) setSetupMode(true);
+        if (settings.businessName) setBusinessName(settings.businessName);
         setChecked(true);
       })
       .catch(() => setChecked(true));
@@ -81,7 +85,7 @@ export function LoginScreen() {
         <CardContent className="p-6">
           <div className="text-center mb-6">
             <FolderKanban className="h-10 w-10 text-green-700 mx-auto mb-2" />
-            <h1 className="text-xl font-semibold">Jose&apos;s Yard Care</h1>
+            <h1 className="text-xl font-semibold">{businessName}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {setupMode ? "Create your owner account" : "Sign in to continue"}
             </p>

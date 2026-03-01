@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { FolderKanban, ListTree, Users, HardHat, ShieldCheck, LogOut, ClipboardList, Settings, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { useSettings } from "@/lib/use-settings";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { Button } from "@/components/ui/button";
 
@@ -42,6 +43,7 @@ function isActive(pathname: string, href: string) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
+  const { settings } = useSettings();
 
   if (loading) {
     return (
@@ -68,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex h-14 items-center gap-2 border-b border-border px-5">
           <FolderKanban className="h-5 w-5 text-green-700" />
           <span className="text-sm font-semibold tracking-tight">
-            Jose&apos;s Yard Care
+            {settings.businessName}
           </span>
         </div>
 
@@ -128,7 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center">
             <FolderKanban className="mr-2 h-5 w-5 text-green-700" />
             <h1 className="text-sm font-semibold tracking-tight">
-              Jose&apos;s Yard Care
+              {settings.businessName}
             </h1>
           </div>
           <div className="flex items-center gap-2">

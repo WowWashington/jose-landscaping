@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { taskTemplates } from "./schema";
 import { createId } from "@paralleldrive/cuid2";
 import path from "path";
+import fs from "fs";
 
 type SubTask = {
   name: string;
@@ -278,7 +279,12 @@ const seedData: Category[] = [
 ];
 
 function seed() {
-  const dbPath = path.join(process.cwd(), "data", "jose.db");
+  const dbPath = process.env.DB_PATH || path.join(process.cwd(), "data", "jose.db");
+  const dataDir = path.dirname(dbPath);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
   const sqlite = new Database(dbPath);
   sqlite.pragma("journal_mode = WAL");
   const db = drizzle(sqlite);

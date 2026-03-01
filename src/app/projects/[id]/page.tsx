@@ -41,7 +41,9 @@ import {
   Phone,
   FileText,
   Trash2,
+  Calendar,
   CalendarClock,
+  Clock,
   CheckCircle2,
   Camera,
   ClipboardList,
@@ -230,7 +232,7 @@ export default function ProjectDetailPage() {
   function openStatusEmail() {
     if (!project) return;
     const subject = encodeURIComponent(formatProjectEmailSubject(project));
-    const body = encodeURIComponent(formatProjectEmailText(project));
+    const body = encodeURIComponent(formatProjectEmailText(project, settings.businessName));
     const to = encodeURIComponent(emailTo.trim());
     window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_self");
     setEmailOpen(false);
@@ -418,8 +420,55 @@ export default function ProjectDetailPage() {
         );
       })()}
 
-      {/* Due Date + Confirmed + Status Notes */}
+      {/* Start Date/Time + Due Date + Confirmed + Status Notes */}
       {canEdit && <div className="rounded-lg border bg-muted/30 p-3 mb-4 space-y-3">
+        <div className="flex items-end gap-3 flex-wrap">
+          <div className="flex-1 min-w-[140px]">
+            <Label htmlFor="startDate" className="text-xs text-muted-foreground flex items-center gap-1">
+              <Calendar className="h-3 w-3" /> Start Date
+            </Label>
+            <Input
+              id="startDate"
+              type="date"
+              defaultValue={project.startDate?.split("T")[0] ?? ""}
+              onBlur={(e) => {
+                const newDate = e.target.value;
+                const currentTime = project.startDate?.includes("T")
+                  ? project.startDate.split("T")[1]
+                  : "";
+                const combined = newDate && currentTime
+                  ? `${newDate}T${currentTime}`
+                  : newDate || null;
+                if (combined !== (project.startDate ?? "")) {
+                  updateProjectField("startDate", combined);
+                }
+              }}
+              className="h-8 text-sm mt-1"
+            />
+          </div>
+          <div className="w-[120px]">
+            <Label htmlFor="startTime" className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" /> Start Time
+            </Label>
+            <Input
+              id="startTime"
+              type="time"
+              defaultValue={project.startDate?.includes("T") ? project.startDate.split("T")[1] : ""}
+              onBlur={(e) => {
+                const currentDate = project.startDate?.split("T")[0] ?? "";
+                const newTime = e.target.value;
+                if (!currentDate) return;
+                const combined = newTime
+                  ? `${currentDate}T${newTime}`
+                  : currentDate;
+                if (combined !== (project.startDate ?? "")) {
+                  updateProjectField("startDate", combined);
+                }
+              }}
+              className="h-8 text-sm mt-1"
+            />
+          </div>
+        </div>
         <div className="flex items-end gap-3 flex-wrap">
           <div className="flex-1 min-w-[160px]">
             <Label htmlFor="dueDate" className="text-xs text-muted-foreground flex items-center gap-1">

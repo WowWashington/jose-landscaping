@@ -5,17 +5,21 @@ import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { EstimatePDF } from "./estimate-pdf";
 import { formatEstimateData } from "@/lib/format-estimate";
+import { useSettings } from "@/lib/use-settings";
 import type { Project } from "@/types";
 import { FileDown, Mail, Loader2 } from "lucide-react";
 
 export function GenerateEstimateButton({ project }: { project: Project }) {
   const [generating, setGenerating] = useState(false);
+  const { settings } = useSettings();
 
   async function generateAndDownload() {
     setGenerating(true);
     try {
       const data = formatEstimateData(project);
-      const blob = await pdf(<EstimatePDF data={data} />).toBlob();
+      const blob = await pdf(
+        <EstimatePDF data={data} businessName={settings.businessName} businessSubtitle={settings.businessSubtitle} />
+      ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -31,7 +35,9 @@ export function GenerateEstimateButton({ project }: { project: Project }) {
     setGenerating(true);
     try {
       const data = formatEstimateData(project);
-      const blob = await pdf(<EstimatePDF data={data} />).toBlob();
+      const blob = await pdf(
+        <EstimatePDF data={data} businessName={settings.businessName} businessSubtitle={settings.businessSubtitle} />
+      ).toBlob();
 
       // Create a download first (since mailto can't attach files directly)
       const url = URL.createObjectURL(blob);
@@ -44,10 +50,10 @@ export function GenerateEstimateButton({ project }: { project: Project }) {
       // Then open mail client with pre-filled subject and body
       const to = project.contact?.email ?? "";
       const subject = encodeURIComponent(
-        `Estimate: ${project.name} - Jose's Yard Care`
+        `Estimate: ${project.name} - ${settings.businessName}`
       );
       const body = encodeURIComponent(
-        `Hi ${project.contact?.name ?? ""},\n\nPlease find the attached estimate for your ${project.name} project.\n\nTotal Estimate: $${data.summary.totalCost.toFixed(2)}\n\nPlease let me know if you have any questions.\n\nThank you,\nJose's Yard Care`
+        `Hi ${project.contact?.name ?? ""},\n\nPlease find the attached estimate for your ${project.name} project.\n\nTotal Estimate: $${data.summary.totalCost.toFixed(2)}\n\nPlease let me know if you have any questions.\n\nThank you,\n${settings.businessName}`
       );
       window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
     } finally {

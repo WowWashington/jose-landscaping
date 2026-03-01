@@ -242,18 +242,28 @@ export default function MyWorkPage() {
                         </span>
                         {item.project.name}
                       </p>
-                      {item.project.startDate && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <Calendar className="h-3 w-3" />
-                          Starts{" "}
-                          {new Date(
-                            item.project.startDate + "T00:00:00"
-                          ).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
-                      )}
+                      {item.project.startDate && (() => {
+                        const hasTime = item.project.startDate.includes("T");
+                        const dateStr = hasTime ? item.project.startDate : item.project.startDate + "T00:00:00";
+                        const d = new Date(dateStr);
+                        const datePart = d.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        });
+                        const timePart = hasTime
+                          ? " · " + d.toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : "";
+                        return (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Calendar className="h-3 w-3" />
+                            Starts {datePart}{timePart}
+                          </p>
+                        );
+                      })()}
                     </div>
                     <span className="text-xs text-muted-foreground shrink-0">
                       {item.taskCount} tasks
