@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
     clearAttempts(name);
 
     const cookieStore = await cookies();
-    cookieStore.set("session", user.id, {
+    const sessionValue = `${user.id}:${user.sessionVersion ?? 1}`;
+    cookieStore.set("session", sessionValue, {
       httpOnly: true,
       sameSite: "lax",
       path: "/",

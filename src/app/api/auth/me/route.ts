@@ -17,10 +17,21 @@ export async function GET() {
       );
     }
 
+    // Cookie format: "userId:version"
+    const [userId, cookieVersion] = session.value.split(":");
+    if (!userId || !cookieVersion) {
+      // Legacy cookie without version — force re-login
+      cookieStore.set("session", "", { httpOnly: true, path: "/", maxAge: 0 });
+      return NextResponse.json(
+        { error: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
     const user = db
       .select()
       .from(users)
-      .where(eq(users.id, session.value))
+      .where(eq(users.id, userId))
       .get();
 
     if (!user) {
@@ -32,7 +43,6 @@ export async function GET() {
 
     // If user is blocked, reject session
     if (user.isBlocked) {
-      // Clear their session cookie
       cookieStore.set("session", "", {
         httpOnly: true,
         path: "/",
@@ -41,6 +51,15 @@ export async function GET() {
       return NextResponse.json(
         { error: "Your access has been disabled. Contact the owner." },
         { status: 403 }
+      );
+    }
+
+    // If session version doesn't match, sessions have been revoked
+    if (cookieVersion !== String(user.sessionVersion ?? 1)) {
+      cookieStore.set("session", "", { httpOnly: true, path: "/", maxAge: 0 });
+      return NextResponse.json(
+        { error: "Session expired. Please log in again." },
+        { status: 401 }
       );
     }
 

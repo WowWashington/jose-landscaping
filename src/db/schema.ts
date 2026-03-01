@@ -132,6 +132,7 @@ export const users = sqliteTable("users", {
   role: text("role").default("worker"), // owner, coordinator, worker
   crewId: text("crew_id"), // optional link to crew member
   isBlocked: integer("is_blocked", { mode: "boolean" }).default(false),
+  sessionVersion: integer("session_version").default(1),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 

@@ -78,6 +78,13 @@
       "when": 1771913607516,
       "tag": "0010_pale_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1772401389311,
+      "tag": "0011_amusing_katie_power",
+      "breakpoints": true
     }
   ]
 }
