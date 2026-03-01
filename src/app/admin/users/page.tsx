@@ -37,6 +37,7 @@ import {
   CheckCircle2,
   LogOut,
   Mail,
+  MessageSquare,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -56,13 +57,15 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Invite dialog state (shown after creating a new user)
+  // Invite dialog state (shown after creating or updating a user's PIN)
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [createdUser, setCreatedUser] = useState<{
+  const [inviteUser, setInviteUser] = useState<{
     name: string;
     email: string;
     pin: string;
     role: string;
+    phone: string;
+    isNew: boolean;
   } | null>(null);
 
   const [form, setForm] = useState({
@@ -122,12 +125,29 @@ export default function UsersPage() {
     };
     if (form.pin) body.pin = form.pin;
 
+    // Resolve phone from linked crew member (for SMS option)
+    const linkedCrew = form.crewId
+      ? crewMembers.find((c) => c.id === form.crewId)
+      : null;
+    const phone = linkedCrew?.phone ?? "";
+
     if (editingId) {
-      await fetch(`/api/users/${editingId}`, {
+      const res = await fetch(`/api/users/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (res.ok && form.pin) {
+        setInviteUser({
+          name: form.name,
+          email: form.email,
+          pin: form.pin,
+          role: form.role,
+          phone,
+          isNew: false,
+        });
+        setInviteDialogOpen(true);
+      }
     } else {
       const res = await fetch("/api/users", {
         method: "POST",
@@ -135,11 +155,13 @@ export default function UsersPage() {
         body: JSON.stringify(body),
       });
       if (res.ok) {
-        setCreatedUser({
+        setInviteUser({
           name: form.name,
           email: form.email,
           pin: form.pin,
           role: form.role,
+          phone,
+          isNew: true,
         });
         setInviteDialogOpen(true);
       }
@@ -182,18 +204,18 @@ export default function UsersPage() {
   }
 
   function buildWelcomeMessage(): string {
-    if (!createdUser) return "";
+    if (!inviteUser) return "";
     const senderName = currentUser?.name ?? "Your manager";
     const appUrl = typeof window !== "undefined" ? window.location.origin : "the app";
 
     return [
-      `Hi ${createdUser.name}!`,
+      `Hi ${inviteUser.name}!`,
       ``,
-      `${senderName} has added you to ${settings.businessName}.`,
+      `${senderName} has ${inviteUser.isNew ? "added you to" : "updated your login for"} ${settings.businessName}.`,
       ``,
       `Your login:`,
-      `  Name: ${createdUser.name}`,
-      `  PIN: ${createdUser.pin}`,
+      `  Name: ${inviteUser.name}`,
+      `  PIN: ${inviteUser.pin}`,
       ``,
       `Open the app: ${appUrl}`,
       ``,
@@ -202,11 +224,17 @@ export default function UsersPage() {
   }
 
   function sendViaEmail() {
-    if (!createdUser?.email) return;
-    const subject = encodeURIComponent(`You're invited to ${settings.businessName}`);
+    if (!inviteUser?.email) return;
+    const subject = encodeURIComponent(`Your login for ${settings.businessName}`);
     const body = encodeURIComponent(buildWelcomeMessage());
-    const to = encodeURIComponent(createdUser.email);
+    const to = encodeURIComponent(inviteUser.email);
     window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_self");
+  }
+
+  function sendViaText() {
+    const body = encodeURIComponent(buildWelcomeMessage());
+    const phone = inviteUser?.phone?.replace(/\D/g, "") ?? "";
+    window.open(`sms:${phone}?body=${body}`, "_self");
   }
 
   if (!isOwner) return null;
@@ -429,13 +457,18 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* ─── Post-creation invite dialog ──────────────────────── */}
+      {/* ─── Invite / credential share dialog ─────────────────── */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>User Created</DialogTitle>
+            <DialogTitle>
+              {inviteUser?.isNew ? "User Created" : "PIN Updated"}
+            </DialogTitle>
             <DialogDescription>
-              {createdUser?.name} has been added. Share their login credentials below.
+              {inviteUser?.isNew
+                ? `${inviteUser?.name} has been added.`
+                : `${inviteUser?.name}'s PIN has been changed.`}{" "}
+              Share their login credentials below.
             </DialogDescription>
           </DialogHeader>
 
@@ -443,29 +476,47 @@ export default function UsersPage() {
             <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
               <p>
                 <span className="text-muted-foreground">Name:</span>{" "}
-                <span className="font-medium">{createdUser?.name}</span>
+                <span className="font-medium">{inviteUser?.name}</span>
               </p>
               <p>
                 <span className="text-muted-foreground">PIN:</span>{" "}
-                <span className="font-mono font-bold text-lg">{createdUser?.pin}</span>
+                <span className="font-mono font-bold text-lg">{inviteUser?.pin}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Role: {ROLE_LABELS[createdUser?.role ?? "worker"] ?? createdUser?.role}
+                Role: {ROLE_LABELS[inviteUser?.role ?? "worker"] ?? inviteUser?.role}
               </p>
             </div>
 
-            {createdUser?.email ? (
-              <Button
-                variant="outline"
-                className="w-full gap-1.5"
-                onClick={sendViaEmail}
-              >
-                <Mail className="h-4 w-4" />
-                Send via Email
-              </Button>
-            ) : (
+            <p className="text-sm text-muted-foreground">
+              Send their login credentials:
+            </p>
+
+            <div className="flex gap-2">
+              {inviteUser?.email && (
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-1.5"
+                  onClick={sendViaEmail}
+                >
+                  <Mail className="h-4 w-4" />
+                  Email
+                </Button>
+              )}
+              {inviteUser?.phone && (
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-1.5"
+                  onClick={sendViaText}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Text
+                </Button>
+              )}
+            </div>
+
+            {!inviteUser?.email && !inviteUser?.phone && (
               <p className="text-xs text-amber-600">
-                No email provided. Share the credentials above manually.
+                No email or phone on file. Share the credentials above manually.
               </p>
             )}
 
