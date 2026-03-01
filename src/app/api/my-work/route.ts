@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { projects, projectActivities, crew, users } from "@/db/schema";
+import { projects, projectActivities, users } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/get-session-user";
@@ -11,16 +11,12 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!user.crewId) {
-      return NextResponse.json({ today: [], upcoming: [], noCrewProfile: true });
-    }
-
-    const crewId = user.crewId;
+    const crewId = user.id;
     const today = new Date().toISOString().split("T")[0];
 
-    // Build crew name lookup
-    const allCrew = db.select().from(crew).all();
-    const crewMap = new Map(allCrew.map((c) => [c.id, c.name]));
+    // Build name lookup from users table
+    const allPeople = db.select().from(users).all();
+    const crewMap = new Map(allPeople.map((p) => [p.id, p.name]));
 
     // Find all activities assigned to this crew member
     const myActivities = db

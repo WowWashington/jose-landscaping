@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CrewMember } from "@/types";
+import { ROLE_LABELS } from "@/types";
+import type { AppUser } from "@/types";
 
 export function CrewPicker({
   value,
@@ -29,12 +30,12 @@ export function CrewPicker({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [members, setMembers] = useState<CrewMember[]>([]);
+  const [members, setMembers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/crew")
+    fetch("/api/users")
       .then((r) => r.json())
       .then((data) => setMembers(data))
       .finally(() => setLoading(false));
@@ -59,10 +60,10 @@ export function CrewPicker({
       </PopoverTrigger>
       <PopoverContent className="w-full min-w-[300px] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search crew..." />
+          <CommandInput placeholder="Search people..." />
           <CommandList>
             <CommandEmpty>
-              {loading ? "Loading..." : "No crew members found."}
+              {loading ? "Loading..." : "No people found."}
             </CommandEmpty>
             <CommandGroup>
               <CommandItem
@@ -96,6 +97,11 @@ export function CrewPicker({
                   />
                   <div>
                     <span>{member.name}</span>
+                    {member.role && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {ROLE_LABELS[member.role] ?? member.role}
+                      </span>
+                    )}
                     {member.city && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         {member.city}

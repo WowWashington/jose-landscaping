@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { contacts, projects, projectActivities, crew, users } from "@/db/schema";
+import { contacts, projects, projectActivities, users } from "@/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { logChange } from "@/lib/log-change";
@@ -34,13 +34,10 @@ export async function GET(request: NextRequest) {
         .all();
     }
 
-    // Build a crew name lookup
-    const allCrew = db.select().from(crew).all();
-    const crewMap = new Map(allCrew.map((c) => [c.id, c.name]));
-
-    // Build a user name lookup for createdBy
+    // Build name lookups (people and createdBy are now the same table)
     const allUsers = db.select().from(users).all();
-    const userMap = new Map(allUsers.map((u) => [u.id, u.name]));
+    const crewMap = new Map(allUsers.map((u) => [u.id, u.name]));
+    const userMap = crewMap;
 
     // Enrich each project with contact info and activity totals
     const enriched = projectRows.map((project) => {

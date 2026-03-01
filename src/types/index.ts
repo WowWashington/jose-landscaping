@@ -57,16 +57,6 @@ export type Project = {
   activities?: ProjectActivity[];
 };
 
-export type CrewMember = {
-  id: string;
-  name: string;
-  city: string | null;
-  phone: string | null;
-  availability: string | null;
-  tasks: string | null;
-  createdAt: Date | null;
-};
-
 export type ProjectActivity = {
   id: string;
   projectId: string;
@@ -107,6 +97,9 @@ export type AppUser = {
   pin: string | null;
   role: string | null;
   crewId: string | null;
+  city: string | null;
+  availability: string | null;
+  tasks: string | null;
   isBlocked: boolean | null;
   createdAt: Date | null;
 };

@@ -73,7 +73,6 @@ export async function PUT(request: NextRequest, { params }: Params) {
       if (caller.id !== id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      // Only allow PIN updates for workers editing themselves
       const allowedKeys = ["pin"];
       const bodyKeys = Object.keys(body);
       if (bodyKeys.some((k) => !allowedKeys.includes(k))) {

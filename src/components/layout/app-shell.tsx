@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderKanban, ListTree, Users, HardHat, ShieldCheck, LogOut, ClipboardList, Settings, Briefcase } from "lucide-react";
+import { FolderKanban, ListTree, Users, HardHat, LogOut, ClipboardList, Settings, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useSettings } from "@/lib/use-settings";
@@ -21,9 +21,8 @@ const navItems: NavItem[] = [
   { href: "/", label: "Projects", icon: FolderKanban, minRole: "worker" },
   { href: "/activity-log", label: "Daily Log", icon: ClipboardList, minRole: "coordinator" },
   { href: "/library", label: "Library", icon: ListTree, minRole: "coordinator" },
-  { href: "/crew", label: "Crew", icon: HardHat, minRole: "coordinator" },
+  { href: "/people", label: "People", icon: HardHat, minRole: "coordinator" },
   { href: "/contacts", label: "Contacts", icon: Users, minRole: "coordinator" },
-  { href: "/admin/users", label: "Users", icon: ShieldCheck, minRole: "owner" },
   { href: "/settings", label: "Settings", icon: Settings, minRole: "owner" },
 ];
 

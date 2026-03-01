@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { ActivityRow } from "./activity-row";
 import { formatCurrency } from "@/lib/calculations";
-import type { ProjectActivity, CrewMember } from "@/types";
+import type { ProjectActivity, AppUser } from "@/types";
 
 function ActivityGroup({
   activity,
@@ -25,7 +25,7 @@ function ActivityGroup({
 }: {
   activity: ProjectActivity;
   depth?: number;
-  crewMembers?: CrewMember[];
+  crewMembers?: AppUser[];
   readOnly?: boolean;
   pendingToggles?: Set<string>;
   onUpdate: (id: string, data: Partial<ProjectActivity>) => void;
@@ -152,7 +152,7 @@ export function ActivityTree({
   onToggleComplete,
 }: {
   activities: ProjectActivity[];
-  crewMembers?: CrewMember[];
+  crewMembers?: AppUser[];
   readOnly?: boolean;
   pendingToggles?: Set<string>;
   onUpdate: (id: string, data: Partial<ProjectActivity>) => void;

@@ -8,13 +8,13 @@ import { getSessionUser } from "@/lib/get-session-user";
 /**
  * POST /api/users/invite
  *
- * Creates a new worker user account linked to a crew member.
- * Generates a random 6-digit PIN and returns it in plain text
- * so the inviter can share it (it's stored hashed in the DB).
+ * Grants login to an existing person (no-login user).
+ * Generates a random 6-digit PIN, sets role to "worker",
+ * and returns the plain-text PIN so the inviter can share it.
  *
  * Owner only.
  *
- * Body: { crewId, name, email? }
+ * Body: { userId, email? }
  * Returns: { user, pin } where pin is the plain-text PIN
  */
 export async function POST(request: NextRequest) {
@@ -28,25 +28,31 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { crewId, name, email } = body;
+    const { userId, email } = body;
 
-    if (!crewId || !name) {
+    if (!userId) {
       return NextResponse.json(
-        { error: "crewId and name are required" },
+        { error: "userId is required" },
         { status: 400 }
       );
     }
 
-    // Check if a user already exists for this crew member
     const existing = db
       .select()
       .from(users)
-      .where(eq(users.crewId, crewId))
+      .where(eq(users.id, userId))
       .get();
 
-    if (existing) {
+    if (!existing) {
       return NextResponse.json(
-        { error: "This crew member already has a user account" },
+        { error: "Person not found" },
+        { status: 404 }
+      );
+    }
+
+    if (existing.role && existing.pin) {
+      return NextResponse.json(
+        { error: "This person already has a login" },
         { status: 409 }
       );
     }
@@ -56,14 +62,13 @@ export async function POST(request: NextRequest) {
     const hashedPinValue = await hashPin(plainPin);
 
     const row = db
-      .insert(users)
-      .values({
-        name,
-        email: email || null,
+      .update(users)
+      .set({
         pin: hashedPinValue,
         role: "worker",
-        crewId,
+        email: email || existing.email,
       })
+      .where(eq(users.id, userId))
       .returning()
       .get();
 

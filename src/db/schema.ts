@@ -74,21 +74,6 @@ export const projects = sqliteTable("projects", {
   ),
 });
 
-// ─── Crew Members ────────────────────────────────────────────
-export const crew = sqliteTable("crew", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  name: text("name").notNull(),
-  city: text("city"),
-  phone: text("phone"),
-  availability: text("availability"), // free text e.g. "Mon-Fri", "Weekends only"
-  tasks: text("tasks"), // free text e.g. "Mowing, trimming, heavy lifting"
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date()
-  ),
-});
-
 // ─── Project Activities (instances of tasks in a project) ───
 export const projectActivities = sqliteTable("project_activities", {
   id: text("id")
@@ -130,8 +115,11 @@ export const users = sqliteTable("users", {
   email: text("email"),
   phone: text("phone"),
   pin: text("pin"), // bcrypt-hashed PIN
-  role: text("role").default("worker"), // owner, coordinator, worker
-  crewId: text("crew_id"), // optional link to crew member
+  role: text("role"), // owner, coordinator, worker — null = no-login person
+  crewId: text("crew_id"), // vestigial, kept for reference
+  city: text("city"),
+  availability: text("availability"),
+  tasks: text("tasks"),
   isBlocked: integer("is_blocked", { mode: "boolean" }).default(false),
   sessionVersion: integer("session_version").default(1),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),

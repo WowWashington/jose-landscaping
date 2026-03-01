@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { contacts, projects, projectActivities, crew, activityPhotos, users } from "@/db/schema";
+import { contacts, projects, projectActivities, activityPhotos, users } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import type { ProjectActivity } from "@/types";
@@ -69,7 +69,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
       .orderBy(asc(projectActivities.sortOrder), asc(projectActivities.name))
       .all();
 
-    // Build a crew name lookup for assigned members
+    // Build a name lookup for assigned people
     const crewIds = [
       ...new Set(
         allActivities
@@ -79,9 +79,9 @@ export async function GET(_request: NextRequest, { params }: Params) {
     ];
     const crewMap = new Map<string, string>();
     if (crewIds.length > 0) {
-      const crewRows = db.select().from(crew).all();
-      for (const c of crewRows) {
-        crewMap.set(c.id, c.name);
+      const peopleRows = db.select().from(users).all();
+      for (const p of peopleRows) {
+        crewMap.set(p.id, p.name);
       }
     }
 
@@ -111,9 +111,9 @@ export async function GET(_request: NextRequest, { params }: Params) {
       ? db.select().from(users).where(eq(users.id, project.createdBy)).get()
       : null;
 
-    // Get lead crew member name
+    // Get lead person name
     const leadCrew = project.leadCrewId
-      ? db.select().from(crew).where(eq(crew.id, project.leadCrewId)).get()
+      ? db.select().from(users).where(eq(users.id, project.leadCrewId)).get()
       : null;
 
     return NextResponse.json({

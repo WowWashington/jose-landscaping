@@ -1,11 +1,11 @@
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { asc, count } from "drizzle-orm";
+import { users, changeLog } from "@/db/schema";
+import { asc, count, eq, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPin } from "@/lib/auth-utils";
 import { getSessionUser } from "@/lib/get-session-user";
 
-// GET /api/users — list all users
+// GET /api/users — list all people (users + former crew)
 export async function GET() {
   try {
     const rows = db
@@ -14,7 +14,27 @@ export async function GET() {
       .orderBy(asc(users.name))
       .all();
 
-    return NextResponse.json(rows);
+    // Build lastActivity lookup from change log
+    const lastActivityMap: Record<string, string> = {};
+    for (const u of rows) {
+      const latest = db
+        .select({ createdAt: changeLog.createdAt })
+        .from(changeLog)
+        .where(eq(changeLog.userId, u.id))
+        .orderBy(desc(changeLog.createdAt))
+        .limit(1)
+        .get();
+      if (latest?.createdAt) {
+        lastActivityMap[u.id] = latest.createdAt.toISOString();
+      }
+    }
+
+    const enriched = rows.map((u) => ({
+      ...u,
+      lastActivity: lastActivityMap[u.id] ?? null,
+    }));
+
+    return NextResponse.json(enriched);
   } catch (error) {
     console.error("GET /api/users error:", error);
     return NextResponse.json(
@@ -24,7 +44,7 @@ export async function GET() {
   }
 }
 
-// POST /api/users — create a new user (owner only; skip guard for first-time setup)
+// POST /api/users — create a new person (owner only; skip guard for first-time setup)
 export async function POST(request: NextRequest) {
   try {
     // Allow unauthenticated creation only when no users exist (first-time setup)
@@ -41,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, phone, pin, role, crewId } = body;
+    const { name, email, phone, pin, role, city, availability, tasks } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -50,12 +70,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash the PIN before storing
+    // Hash the PIN before storing (only required for people with a role)
     const hashedPin = pin ? await hashPin(pin) : null;
 
     const row = db
       .insert(users)
-      .values({ name, email, phone, pin: hashedPin, role, crewId })
+      .values({
+        name,
+        email,
+        phone,
+        pin: hashedPin,
+        role: role ?? null,
+        city,
+        availability,
+        tasks,
+      })
       .returning()
       .get();
 

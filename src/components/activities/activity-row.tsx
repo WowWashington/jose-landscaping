@@ -15,7 +15,7 @@ import { formatCurrency } from "@/lib/calculations";
 import { UNIT_LABELS } from "@/types";
 import { Pencil, Trash2, Check, X, User, Camera } from "lucide-react";
 import Link from "next/link";
-import type { ProjectActivity, CrewMember } from "@/types";
+import type { ProjectActivity, AppUser } from "@/types";
 
 function formatCompletedDate(date: Date | string | null): string {
   if (!date) return "";
@@ -37,7 +37,7 @@ export function ActivityRow({
 }: {
   activity: ProjectActivity;
   depth?: number;
-  crewMembers?: CrewMember[];
+  crewMembers?: AppUser[];
   readOnly?: boolean;
   pendingToggles?: Set<string>;
   onUpdate: (id: string, data: Partial<ProjectActivity>) => void;

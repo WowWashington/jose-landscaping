@@ -19,7 +19,7 @@ import { GenerateEstimateButton } from "@/components/estimate/generate-button";
 import { calculateProjectSummary, formatCurrency } from "@/lib/calculations";
 import { useAuth } from "@/lib/auth-context";
 import { STATUS_LABELS, DIVISION_LABELS } from "@/types";
-import type { Project, ProjectActivity, CrewMember, ChangeLogEntry } from "@/types";
+import type { Project, ProjectActivity, AppUser, ChangeLogEntry } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -69,7 +69,7 @@ export default function ProjectDetailPage() {
   const { canEdit, isOwner, isWorker } = useAuth();
   const { settings } = useSettings();
   const [project, setProject] = useState<Project | null>(null);
-  const [crewMembers, setCrewMembers] = useState<CrewMember[]>([]);
+  const [crewMembers, setCrewMembers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
   // Worker batching: toggled activity IDs that haven't been saved yet
@@ -98,9 +98,9 @@ export default function ProjectDetailPage() {
       .catch(() => {});
   }, [projectId]);
 
-  // Fetch crew members once
+  // Fetch people once
   useEffect(() => {
-    fetch("/api/crew")
+    fetch("/api/users")
       .then((r) => r.json())
       .then((data) => setCrewMembers(data));
   }, []);

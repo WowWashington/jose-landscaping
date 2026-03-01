@@ -11,7 +11,7 @@ import {
   Clock,
   HardHat,
   MapPin,
-  AlertCircle,
+
 } from "lucide-react";
 import Link from "next/link";
 
@@ -51,7 +51,6 @@ type UpcomingProject = {
 type MyWorkData = {
   today: TodayProject[];
   upcoming: UpcomingProject[];
-  noCrewProfile: boolean;
 };
 
 export default function MyWorkPage() {
@@ -84,27 +83,6 @@ export default function MyWorkPage() {
 
   if (loading) {
     return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
-  }
-
-  if (data?.noCrewProfile) {
-    return (
-      <div className="p-4 sm:p-6 max-w-2xl mx-auto">
-        <h1 className="text-xl font-semibold flex items-center gap-2 mb-4">
-          <Briefcase className="h-5 w-5" /> My Work
-        </h1>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
-              No crew profile linked to your account.
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Ask the owner to link your user to a crew member in the Users page.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
   }
 
   const divIcon = (div: string | null) =>
