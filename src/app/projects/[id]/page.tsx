@@ -294,7 +294,7 @@ export default function ProjectDetailPage() {
             <label className="cursor-pointer group relative">
               <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted">
                 <img
-                  src={`/uploads/${project.coverPhoto}`}
+                  src={`/api/uploads/${project.coverPhoto}`}
                   alt="Cover"
                   className="object-cover w-full h-full"
                 />

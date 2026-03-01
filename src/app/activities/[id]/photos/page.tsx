@@ -189,7 +189,7 @@ export default function ActivityPhotosPage() {
             <Card key={photo.id} className="overflow-hidden">
               <div className="relative aspect-video bg-muted">
                 <img
-                  src={`/uploads/${photo.fileName}`}
+                  src={`/api/uploads/${photo.fileName}`}
                   alt={photo.note ?? "Activity photo"}
                   className="absolute inset-0 w-full h-full object-cover"
                 />

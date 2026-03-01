@@ -141,7 +141,7 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
             {project.coverPhoto && (
               <div className="shrink-0 mr-3 rounded-md overflow-hidden w-14 h-14 bg-muted">
                 <img
-                  src={`/uploads/${project.coverPhoto}`}
+                  src={`/api/uploads/${project.coverPhoto}`}
                   alt=""
                   className="object-cover w-full h-full"
                 />
