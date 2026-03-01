@@ -27,7 +27,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, pin, role, crewId } = body;
+    const { name, email, phone, pin, role, crewId } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     const row = db
       .insert(users)
-      .values({ name, email, pin: hashedPin, role, crewId })
+      .values({ name, email, phone, pin: hashedPin, role, crewId })
       .returning()
       .get();
 

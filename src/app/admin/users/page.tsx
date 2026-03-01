@@ -71,6 +71,7 @@ export default function UsersPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     pin: "",
     role: "worker",
     crewId: "",
@@ -97,7 +98,7 @@ export default function UsersPage() {
   }, [isOwner, router, load]);
 
   function resetForm() {
-    setForm({ name: "", email: "", pin: "", role: "worker", crewId: "" });
+    setForm({ name: "", email: "", phone: "", pin: "", role: "worker", crewId: "" });
     setShowForm(false);
     setEditingId(null);
   }
@@ -106,6 +107,7 @@ export default function UsersPage() {
     setForm({
       name: u.name ?? "",
       email: u.email ?? "",
+      phone: u.phone ?? "",
       pin: "", // don't show existing pin
       role: u.role ?? "worker",
       crewId: u.crewId ?? "",
@@ -120,16 +122,11 @@ export default function UsersPage() {
     const body: Record<string, any> = {
       name: form.name,
       email: form.email || null,
+      phone: form.phone || null,
       role: form.role,
       crewId: form.crewId || null,
     };
     if (form.pin) body.pin = form.pin;
-
-    // Resolve phone from linked crew member (for SMS option)
-    const linkedCrew = form.crewId
-      ? crewMembers.find((c) => c.id === form.crewId)
-      : null;
-    const phone = linkedCrew?.phone ?? "";
 
     if (editingId) {
       const res = await fetch(`/api/users/${editingId}`, {
@@ -143,7 +140,7 @@ export default function UsersPage() {
           email: form.email,
           pin: form.pin,
           role: form.role,
-          phone,
+          phone: form.phone,
           isNew: false,
         });
         setInviteDialogOpen(true);
@@ -160,7 +157,7 @@ export default function UsersPage() {
           email: form.email,
           pin: form.pin,
           role: form.role,
-          phone,
+          phone: form.phone,
           isNew: true,
         });
         setInviteDialogOpen(true);
@@ -299,6 +296,18 @@ export default function UsersPage() {
                   value={form.email}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                  placeholder="optional"
+                />
+              </div>
+              <div>
+                <Label htmlFor="user-phone">Phone</Label>
+                <Input
+                  id="user-phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, phone: e.target.value }))
                   }
                   placeholder="optional"
                 />

@@ -128,6 +128,7 @@ export const users = sqliteTable("users", {
   id: text("id").primaryKey().$defaultFn(() => createId()),
   name: text("name").notNull(),
   email: text("email"),
+  phone: text("phone"),
   pin: text("pin"), // bcrypt-hashed PIN
   role: text("role").default("worker"), // owner, coordinator, worker
   crewId: text("crew_id"), // optional link to crew member

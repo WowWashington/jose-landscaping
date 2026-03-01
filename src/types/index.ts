@@ -103,6 +103,7 @@ export type AppUser = {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
   pin: string | null;
   role: string | null;
   crewId: string | null;
