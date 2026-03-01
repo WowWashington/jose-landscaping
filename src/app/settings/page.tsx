@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
-import { Settings, Shield, Building2, Layers } from "lucide-react";
+import { Settings, Shield, Building2, Layers, Check } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
   const { isOwner, loading: authLoading } = useAuth();
@@ -17,15 +18,24 @@ export default function SettingsPage() {
   const [enableYardCare, setEnableYardCare] = useState(true);
   const [enableContracting, setEnableContracting] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [initialName, setInitialName] = useState("");
+  const [initialSubtitle, setInitialSubtitle] = useState("");
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
         setMaskContacts(data.maskContactsForWorkers !== "false");
-        if (data.businessName) setBusinessName(data.businessName);
-        if (data.businessSubtitle) setBusinessSubtitle(data.businessSubtitle);
+        if (data.businessName) {
+          setBusinessName(data.businessName);
+          setInitialName(data.businessName);
+        }
+        if (data.businessSubtitle) {
+          setBusinessSubtitle(data.businessSubtitle);
+          setInitialSubtitle(data.businessSubtitle);
+        }
         setEnableYardCare(data.enableYardCare !== "false");
         setEnableContracting(data.enableContracting !== "false");
         setLoaded(true);
@@ -39,13 +49,11 @@ export default function SettingsPage() {
   }, [authLoading, isOwner, router]);
 
   async function saveSetting(key: string, value: string) {
-    setSaving(true);
     await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, value }),
     });
-    setSaving(false);
   }
 
   async function toggleMask(checked: boolean) {
@@ -92,8 +100,7 @@ export default function SettingsPage() {
             <Input
               id="businessName"
               value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              onBlur={() => saveSetting("businessName", businessName)}
+              onChange={(e) => { setBusinessName(e.target.value); setSaved(false); }}
               placeholder="Your business name"
               className="mt-1"
             />
@@ -108,8 +115,7 @@ export default function SettingsPage() {
             <Input
               id="businessSubtitle"
               value={businessSubtitle}
-              onChange={(e) => setBusinessSubtitle(e.target.value)}
-              onBlur={() => saveSetting("businessSubtitle", businessSubtitle)}
+              onChange={(e) => { setBusinessSubtitle(e.target.value); setSaved(false); }}
               placeholder="e.g., Landscaping & Outdoor Services"
               className="mt-1"
             />
@@ -117,6 +123,33 @@ export default function SettingsPage() {
               Shown below the business name on PDF estimates.
             </p>
           </div>
+          {(businessName !== initialName || businessSubtitle !== initialSubtitle) && (
+            <Button
+              size="sm"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                if (businessName !== initialName) {
+                  await saveSetting("businessName", businessName);
+                  setInitialName(businessName);
+                }
+                if (businessSubtitle !== initialSubtitle) {
+                  await saveSetting("businessSubtitle", businessSubtitle);
+                  setInitialSubtitle(businessSubtitle);
+                }
+                setSaving(false);
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
+              }}
+            >
+              {saving ? "Saving..." : saved ? <><Check className="h-4 w-4 mr-1" /> Saved</> : "Save"}
+            </Button>
+          )}
+          {saved && businessName === initialName && businessSubtitle === initialSubtitle && (
+            <p className="text-xs text-green-600 flex items-center gap-1">
+              <Check className="h-3 w-3" /> Saved
+            </p>
+          )}
         </div>
       </div>
 
