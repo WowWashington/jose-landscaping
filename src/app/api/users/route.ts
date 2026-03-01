@@ -1,8 +1,9 @@
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { asc } from "drizzle-orm";
+import { asc, count } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPin } from "@/lib/auth-utils";
+import { getSessionUser } from "@/lib/get-session-user";
 
 // GET /api/users — list all users
 export async function GET() {
@@ -23,9 +24,22 @@ export async function GET() {
   }
 }
 
-// POST /api/users — create a new user
+// POST /api/users — create a new user (owner only; skip guard for first-time setup)
 export async function POST(request: NextRequest) {
   try {
+    // Allow unauthenticated creation only when no users exist (first-time setup)
+    const [{ total }] = db.select({ total: count() }).from(users).all();
+
+    if (total > 0) {
+      const caller = await getSessionUser();
+      if (!caller || caller.role !== "owner") {
+        return NextResponse.json(
+          { error: "Only the owner can create users" },
+          { status: 403 }
+        );
+      }
+    }
+
     const body = await request.json();
     const { name, email, phone, pin, role, crewId } = body;
 

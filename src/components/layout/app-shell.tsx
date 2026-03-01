@@ -152,7 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 pb-16 md:pb-0">{children}</main>
 
         {/* Mobile bottom nav */}
-        <nav className="fixed bottom-0 inset-x-0 z-30 flex h-16 items-center justify-around border-t border-border bg-card md:hidden">
+        <nav className="fixed bottom-0 inset-x-0 z-30 flex h-16 items-center overflow-x-auto scrollbar-hide border-t border-border bg-card md:hidden">
           {visibleNav.map((item) => {
             const active = isActive(pathname, item.href);
             return (
@@ -160,7 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-1 text-xs font-medium transition-colors",
+                  "flex shrink-0 min-w-[3.5rem] flex-col items-center gap-1 px-3 py-1 text-xs font-medium transition-colors",
                   active
                     ? "text-green-700"
                     : "text-muted-foreground"

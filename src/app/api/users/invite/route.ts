@@ -3,6 +3,7 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPin, generatePin } from "@/lib/auth-utils";
+import { getSessionUser } from "@/lib/get-session-user";
 
 /**
  * POST /api/users/invite
@@ -11,11 +12,21 @@ import { hashPin, generatePin } from "@/lib/auth-utils";
  * Generates a random 6-digit PIN and returns it in plain text
  * so the inviter can share it (it's stored hashed in the DB).
  *
+ * Owner only.
+ *
  * Body: { crewId, name, email? }
  * Returns: { user, pin } where pin is the plain-text PIN
  */
 export async function POST(request: NextRequest) {
   try {
+    const caller = await getSessionUser();
+    if (!caller || caller.role !== "owner") {
+      return NextResponse.json(
+        { error: "Only the owner can invite users" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { crewId, name, email } = body;
 
