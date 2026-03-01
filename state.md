@@ -1,14 +1,16 @@
-# Jose's Yard Care - Project State
+# Jose's Services - Project State
 
 > Resume instruction: "Read STATE.md to understand where we are in the project and what needs to happen next. Do not review the previous chat history."
 
 ## Project Overview
 
-**Jose's Yard Care** — Field-management web app for a small landscaping and general contracting business. Handles project estimation, crew assignment, task tracking, photo documentation, contacts, and personal work dashboards. Built mobile-first for field workers with no subscription fees. Designed for a solo operator (Jose) + small crew (3-5 people).
+**Jose's Services** — Field-management web app for a small landscaping and general contracting business. Handles project estimation, crew assignment, task tracking, photo documentation, contacts, and personal work dashboards. Built mobile-first for field workers with no subscription fees. Designed for a solo operator (Jose) + small crew (3-5 people).
 
 - **Language/Stack**: Next.js 16, React 19, TypeScript, Tailwind CSS 4, SQLite (better-sqlite3), Drizzle ORM, shadcn/ui
 - **Dependencies**: @react-pdf/renderer, bcryptjs, cmdk, lucide-react, @paralleldrive/cuid2
 - **Local path**: `/Users/automator/Projects/jose-landscaping/`
+- **GitHub**: `https://github.com/WowWashington/jose-landscaping`
+- **Live URL**: `https://jose-services-app.azurewebsites.net`
 - **License**: MIT
 
 ---
@@ -62,19 +64,26 @@ jose-landscaping/
 │   │   ├── auth-context.tsx          # AuthProvider + useAuth hook
 │   │   ├── auth-utils.ts             # hashPin(), verifyPin(), role checks
 │   │   ├── get-session-user.ts       # Server-side session from cookie
+│   │   ├── get-settings.ts           # Server-side settings reader (for layout.tsx)
 │   │   ├── log-change.ts             # logChange() audit trail utility
 │   │   ├── mask-utils.ts             # maskPhone(), maskEmail()
-│   │   ├── use-settings.ts           # useSettings() hook
+│   │   ├── use-settings.ts           # useSettings() hook (client-side)
 │   │   ├── calculations.ts           # Cost/hours aggregation from activity tree
 │   │   ├── template-to-activities.ts # Copy template hierarchy to project
 │   │   ├── quote-number.ts           # generateQuoteNumber() Q-YYMM-XXXX
 │   │   ├── compress-image.ts         # Client-side image compression
 │   │   ├── format-estimate.ts        # PDF data preparation
+│   │   ├── format-project-email.ts   # Plain-text project status email
 │   │   └── uploads.ts                # File upload utilities
 │   │
 │   └── types/index.ts                # Shared TypeScript types + constants
 │
 ├── drizzle/                          # Database migrations (11 SQL files)
+├── scripts/
+│   ├── start.sh                      # Docker startup (migrations + seeding + server)
+│   └── hash-existing-pins.ts         # One-time PIN migration utility
+├── .github/workflows/deploy.yml      # CI/CD: build → push to ACR → deploy to Azure
+├── Dockerfile                        # Multi-stage build (deps → builder → runner)
 ├── docs/plans/                       # Design + implementation docs
 ├── public/uploads/                   # Photo uploads (gitignored)
 ├── data/jose.db                      # SQLite database (gitignored)
@@ -97,6 +106,7 @@ jose-landscaping/
 7. **In-browser PDF** — @react-pdf/renderer generates estimates client-side. No server-side rendering needed.
 8. **Single SQLite file** — `data/jose.db`, WAL mode, foreign keys enabled. Zero infrastructure cost.
 9. **No external services** — no email provider, no cloud storage, no payment processing. Everything local.
+10. **Configurable branding** — Business name, subtitle, and division toggles stored in `appSettings` table. Changeable via Settings page without code changes. Supports multi-tenant deployment (one codebase, many instances).
 
 ### Navigation
 
@@ -117,15 +127,17 @@ Desktop: fixed sidebar (w-60). Mobile: sticky header + bottom nav.
 
 ## Configuration & Secrets
 
-- **Database**: `data/jose.db` (auto-created on first run, gitignored)
-- **Env var**: `DB_PATH` overrides default database location
+- **Database**: `data/jose.db` locally (auto-created on first run, gitignored)
+- **Env vars**:
+  - `DB_PATH` — overrides default database location (default: `data/jose.db`)
+  - `UPLOADS_DIR` — overrides upload directory (default: `public/uploads/`)
 - **No other env vars** — no external services, API keys, or secrets
-- **Uploads**: stored in `public/uploads/` (gitignored)
-- **next.config.ts**: output set to `"standalone"` (Vercel-ready)
+- **Uploads**: stored in `public/uploads/` locally (gitignored)
+- **next.config.ts**: output set to `"standalone"` for Docker deployment
 
 ---
 
-## Running / Deployment
+## Running Locally
 
 ```bash
 cd /Users/automator/Projects/jose-landscaping
@@ -146,7 +158,113 @@ npm run build  # Clean, no errors
 npm run start  # Run production build locally
 ```
 
-**Planned deployment**: Vercel (free tier) + Turso (SQLite-in-cloud). Requires migrating from better-sqlite3 to libsql driver. Not yet started.
+---
+
+## Deployment (Azure)
+
+### How It Works
+
+The app deploys automatically via GitHub Actions. Every push to `main` triggers:
+
+```
+git push origin main
+  → GitHub Actions (.github/workflows/deploy.yml)
+    → Builds Docker image
+    → Pushes to Azure Container Registry (ACR)
+    → Deploys to Azure App Service
+```
+
+**No manual steps needed after initial setup.** Typical deploy time: ~2-3 minutes.
+
+### Azure Resources
+
+| Resource | Name | SKU | Cost |
+|----------|------|-----|------|
+| Resource Group | `jose-services` | — | — |
+| Container Registry | `joseservicesacr` | Basic | ~$5/mo |
+| App Service Plan | `jose-services-plan` | B1 Linux | ~$13/mo |
+| App Service | `jose-services-app` | — | (shared plan) |
+
+**Total: ~$18/mo** — well within the $150/mo Microsoft benefit credit.
+
+**Region**: West US 2
+
+### Persistent Storage
+
+Azure App Service persists the `/home` directory across container restarts:
+- **Database**: `/home/data/app.db`
+- **Uploads**: `/home/uploads/` (symlinked to `/app/public/uploads` by `start.sh`)
+
+### Container Startup (scripts/start.sh)
+
+On every container start:
+1. Creates `/home/data` and `/home/uploads` directories
+2. Symlinks uploads into Next.js public dir
+3. Runs Drizzle migrations (safe to repeat — only applies new ones)
+4. On first run only: seeds the database with templates and default settings
+5. Starts the Next.js standalone server
+
+### GitHub Secrets
+
+These are set in the GitHub repo (Settings → Secrets → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `ACR_LOGIN_SERVER` | `joseservicesacr.azurecr.io` |
+| `ACR_USERNAME` | `joseservicesacr` |
+| `ACR_PASSWORD` | ACR admin password |
+| `AZURE_CREDENTIALS` | Service principal JSON for `azure/login` action |
+
+To retrieve credentials again if needed:
+```bash
+# ACR credentials
+az acr credential show -n joseservicesacr
+
+# Service principal (creates a new one)
+SUB_ID=$(az account show --query id -o tsv)
+az ad sp create-for-rbac --name "jose-services-deploy" \
+  --role contributor \
+  --scopes "/subscriptions/$SUB_ID/resourceGroups/jose-services" \
+  --sdk-auth
+```
+
+### Adding a New Instance (e.g., for another contractor)
+
+1. Create the App Service:
+```bash
+ACR_URL=$(az acr show -n joseservicesacr --query loginServer -o tsv)
+az webapp create --resource-group jose-services --plan jose-services-plan \
+  --name brian-services-app \
+  --container-image-name "${ACR_URL}/field-service:latest" \
+  --container-registry-url "https://$ACR_URL" \
+  --container-registry-user joseservicesacr \
+  --container-registry-password "$(az acr credential show -n joseservicesacr --query 'passwords[0].value' -o tsv)"
+
+az webapp config appsettings set --resource-group jose-services --name brian-services-app \
+  --settings WEBSITES_ENABLE_APP_SERVICE_STORAGE=true DB_PATH=/home/data/app.db UPLOADS_DIR=/home/uploads
+```
+
+2. Add a deploy step to `.github/workflows/deploy.yml`:
+```yaml
+      - name: Deploy to brian-services-app
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: brian-services-app
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/field-service:${{ github.sha }}
+```
+
+3. Push to `main` — both instances update from the same image. Each has its own database + settings.
+
+### Manual Deploy / Re-deploy
+
+To trigger a deploy without code changes:
+```bash
+# From GitHub CLI
+gh workflow run deploy.yml
+
+# Or from the GitHub web UI:
+# Actions tab → "Deploy to Azure" → "Run workflow"
+```
 
 ---
 
@@ -156,16 +274,19 @@ npm run start  # Run production build locally
 - Activity tree: 3-level hierarchy, template or free-text tasks, inline editing, completion tracking
 - Task template library: 60+ yard care sub-tasks, general contracting templates, search, reorder
 - Contacts: CRUD, picker combobox, last contact date
-- Crew management: CRUD, assignment to tasks + project lead
+- Crew management: CRUD, assignment to tasks + project lead, "last seen" indicator
 - Authentication: PIN login (bcrypt), cookie sessions, rate limiting, user invite flow
 - Authorization: 3-tier roles (owner/coordinator/worker), block/unblock users
 - Contact data masking: toggle, masked display, reveal audit logging
 - My Work dashboard: personal assigned tasks, completion checkboxes, upcoming projects
 - Enhanced project cards: rich data display, multi-field search, sort, status filter
 - PDF estimate generation: in-browser, line-item table, download/email
-- Activity log: cross-project audit trail, per-project timeline, manual notes
+- Activity log: cross-project audit trail, per-project timeline, manual notes, login/logout logging
 - Photo documentation: upload, compress, gallery, delete
 - Mobile-responsive UI: sidebar + bottom nav
+- Project start time: date + time selector, displayed on project cards
+- Configurable branding: business name, subtitle, division toggles via Settings page
+- Azure deployment: Docker container, auto-deploy from GitHub, persistent storage
 
 ---
 
@@ -178,7 +299,8 @@ npm run start  # Run production build locally
 - Estimate approval workflow (client-facing)
 - Dashboard analytics (revenue, hours, project pipeline)
 - Data export/backup
-- Deployment (Vercel + Turso)
+- Logo/image upload for branding
+- Color theme per instance
 
 ---
 
@@ -192,38 +314,10 @@ All in `docs/plans/`:
 
 ---
 
-## Git History (22 commits, newest first)
-
-```
-0cfb07a docs: add MIT license
-c2a2723 docs: replace boilerplate README with comprehensive project documentation
-3b481c9 docs: add state.md capturing full project requirements and status
-dcd8215 feat: add complete core app (projects, contacts, crew, library, auth, estimates)
-b9d0159 fix: add crewId to SessionUser type for my-work API
-bcc0960 feat: expand project search to match crew member names
-5e32b35 feat: add My Work to navigation (all roles, first position)
-71aa70a feat: add My Work page with task completion
-f6c5247 feat: add GET /api/my-work endpoint for personal dashboard
-c4837c2 Add implementation plan for My Work page and crew search
-aafdade Add design doc for My Work page and project search enhancement
-092c48b fix: add missing leadCrewName to ProjectListItem type and mapping
-fb5cd79 feat: add start date and total hours to project cards
-882fbf8 feat: add Settings page with mask contacts toggle (owner only)
-a5b1748 feat: apply contact masking to all UI pages
-4e23100 feat: add useSettings hook for app settings
-736c202 feat: add MaskedField component with reveal + audit logging
-58ce92d feat: add maskPhone and maskEmail utility functions
-e650cac Add log-view API endpoint for auditing contact info reveals
-deb390e Add settings API endpoints for GET and PUT
-4c519d1 Add appSettings table to schema and seed default setting
-8beaec4 Add implementation plan for contact masking + enhanced project cards
-```
-
----
-
 ## Current Status
 
-**Last updated**: 2026-02-26
-**State**: Active — all core features complete, deployment-ready
-**Recent changes**: Complete app rebuild (dcd8215), My Work dashboard, contact masking, MIT license
-**Next steps**: Deploy to Vercel + Turso, or add PWA support for "Add to Home Screen" experience
+**Last updated**: 2026-03-01
+**State**: Deployed and live on Azure
+**Live URL**: https://jose-services-app.azurewebsites.net
+**Recent changes**: Audit logging, project start times, crew last-seen, configurable branding, Azure CI/CD deployment
+**Next steps**: Test live app on mobile, add PWA support, consider logo upload
