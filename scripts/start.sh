@@ -53,44 +53,22 @@ if [ -d "/app/drizzle" ]; then
   "
 fi
 
-# Seed database on first run (if DB file doesn't exist yet)
-if [ ! -f "$DB_PATH" ] || [ "$(stat -c%s "$DB_PATH" 2>/dev/null || stat -f%z "$DB_PATH" 2>/dev/null)" = "0" ]; then
-  echo "First run: seeding database..."
+# Seed templates if the table is empty (safe to run every startup)
+NEED_SEED=$(cd /app && node -e "
+  const Database = require('better-sqlite3');
+  const dbPath = process.env.DB_PATH || '/home/data/app.db';
+  const db = new Database(dbPath);
+  try {
+    const row = db.prepare('SELECT COUNT(*) as cnt FROM task_templates').get();
+    console.log(row.cnt === 0 ? 'yes' : 'no');
+  } catch (e) {
+    console.log('yes');
+  }
+  db.close();
+" 2>/dev/null || echo "yes")
 
-  # Run migrations first to create tables
-  cd /app && node -e "
-    const Database = require('better-sqlite3');
-    const fs = require('fs');
-    const path = require('path');
-    const dbPath = process.env.DB_PATH || '/home/data/app.db';
-    const db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-
-    db.exec(\`CREATE TABLE IF NOT EXISTS __drizzle_migrations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      hash TEXT NOT NULL,
-      created_at INTEGER
-    )\`);
-
-    const migrationsDir = path.join('/app', 'drizzle');
-    const files = fs.readdirSync(migrationsDir)
-      .filter(f => f.endsWith('.sql'))
-      .sort();
-
-    for (const file of files) {
-      console.log('Applying migration:', file);
-      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-      db.exec(sql);
-      const hash = file.replace('.sql', '');
-      db.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)').run(hash, Date.now());
-    }
-
-    db.close();
-    console.log('All migrations applied.');
-  "
-
-  # Run seed scripts
+if [ "$NEED_SEED" = "yes" ]; then
+  echo "Seeding task templates and settings..."
   node /app/seeds/seed.js
   node /app/seeds/seed-contracting.js
   node /app/seeds/seed-settings.js
