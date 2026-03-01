@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -14,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
+import { useSettings } from "@/lib/use-settings";
 import type { AppUser, CrewMember } from "@/types";
 import { ROLE_LABELS } from "@/types";
 import {
@@ -26,6 +35,8 @@ import {
   Eye,
   Ban,
   CheckCircle2,
+  LogOut,
+  Mail,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -37,12 +48,22 @@ const ROLE_ICONS: Record<string, typeof ShieldCheck> = {
 
 export default function UsersPage() {
   const { isOwner, user: currentUser } = useAuth();
+  const { settings } = useSettings();
   const router = useRouter();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [crewMembers, setCrewMembers] = useState<CrewMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Invite dialog state (shown after creating a new user)
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [createdUser, setCreatedUser] = useState<{
+    name: string;
+    email: string;
+    pin: string;
+    role: string;
+  } | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -108,11 +129,20 @@ export default function UsersPage() {
         body: JSON.stringify(body),
       });
     } else {
-      await fetch("/api/users", {
+      const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (res.ok) {
+        setCreatedUser({
+          name: form.name,
+          email: form.email,
+          pin: form.pin,
+          role: form.role,
+        });
+        setInviteDialogOpen(true);
+      }
     }
     resetForm();
     load();
@@ -135,6 +165,48 @@ export default function UsersPage() {
       body: JSON.stringify({ isBlocked: newBlocked }),
     });
     load();
+  }
+
+  async function handleLogoutAll(u: AppUser) {
+    const isSelf = u.id === currentUser?.id;
+    const msg = isSelf
+      ? `Logout all your sessions everywhere? You will need to log in again.`
+      : `Logout all sessions for ${u.name}? They will need to log in again on all devices.`;
+    if (!confirm(msg)) return;
+    await fetch(`/api/users/${u.id}/logout-all`, { method: "POST" });
+    if (isSelf) {
+      window.location.reload();
+    } else {
+      load();
+    }
+  }
+
+  function buildWelcomeMessage(): string {
+    if (!createdUser) return "";
+    const senderName = currentUser?.name ?? "Your manager";
+    const appUrl = typeof window !== "undefined" ? window.location.origin : "the app";
+
+    return [
+      `Hi ${createdUser.name}!`,
+      ``,
+      `${senderName} has added you to ${settings.businessName}.`,
+      ``,
+      `Your login:`,
+      `  Name: ${createdUser.name}`,
+      `  PIN: ${createdUser.pin}`,
+      ``,
+      `Open the app: ${appUrl}`,
+      ``,
+      `You can change your PIN after logging in.`,
+    ].join("\n");
+  }
+
+  function sendViaEmail() {
+    if (!createdUser?.email) return;
+    const subject = encodeURIComponent(`You're invited to ${settings.businessName}`);
+    const body = encodeURIComponent(buildWelcomeMessage());
+    const to = encodeURIComponent(createdUser.email);
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_self");
   }
 
   if (!isOwner) return null;
@@ -305,6 +377,16 @@ export default function UsersPage() {
                     </p>
                   </div>
                   <div className="flex gap-1">
+                    {/* Logout everywhere */}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-blue-600"
+                      onClick={() => handleLogoutAll(u)}
+                      title="Logout everywhere"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                    </Button>
                     {/* Block/Unblock — can't block yourself */}
                     {!isSelf && (
                       <Button
@@ -346,6 +428,58 @@ export default function UsersPage() {
           })}
         </div>
       )}
+
+      {/* ─── Post-creation invite dialog ──────────────────────── */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>User Created</DialogTitle>
+            <DialogDescription>
+              {createdUser?.name} has been added. Share their login credentials below.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+              <p>
+                <span className="text-muted-foreground">Name:</span>{" "}
+                <span className="font-medium">{createdUser?.name}</span>
+              </p>
+              <p>
+                <span className="text-muted-foreground">PIN:</span>{" "}
+                <span className="font-mono font-bold text-lg">{createdUser?.pin}</span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Role: {ROLE_LABELS[createdUser?.role ?? "worker"] ?? createdUser?.role}
+              </p>
+            </div>
+
+            {createdUser?.email ? (
+              <Button
+                variant="outline"
+                className="w-full gap-1.5"
+                onClick={sendViaEmail}
+              >
+                <Mail className="h-4 w-4" />
+                Send via Email
+              </Button>
+            ) : (
+              <p className="text-xs text-amber-600">
+                No email provided. Share the credentials above manually.
+              </p>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setInviteDialogOpen(false)}
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
