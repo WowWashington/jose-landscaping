@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,21 +26,20 @@ jobs:
             .
           docker push ${{ secrets.ACR_LOGIN_SERVER }}/field-service --all-tags
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - app-name: jose-services-app
-            secret-key: PUBLISH_PROFILE_jose_services_app
-          # Add more instances here:
-          # - app-name: brian-services-app
-          #   secret-key: PUBLISH_PROFILE_brian_services_app
-    steps:
-      - name: Deploy to Azure App Service
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to jose-services-app
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ matrix.app-name }}
-          publish-profile: ${{ secrets[matrix.secret-key] }}
+          app-name: jose-services-app
           images: ${{ secrets.ACR_LOGIN_SERVER }}/field-service:${{ github.sha }}
+
+      # To add more instances, duplicate the deploy step:
+      # - name: Deploy to brian-services-app
+      #   uses: azure/webapps-deploy@v2
+      #   with:
+      #     app-name: brian-services-app
+      #     images: ${{ secrets.ACR_LOGIN_SERVER }}/field-service:${{ github.sha }}
