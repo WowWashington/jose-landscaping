@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, User } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ActivityRow } from "./activity-row";
 import { formatCurrency } from "@/lib/calculations";
 import type { ProjectActivity, CrewMember } from "@/types";
@@ -55,23 +62,65 @@ function ActivityGroup({
     return sum + (child.cost ?? 0) * (child.quantity ?? 1);
   }, 0);
 
+  function handleCrewChange(value: string) {
+    const crewId = value === "__none__" ? null : value;
+    onUpdate(activity.id, { crewId } as Partial<ProjectActivity>);
+  }
+
   return (
     <div className="border rounded-lg mb-2 overflow-hidden">
-      <button
-        className="w-full flex items-center gap-2 p-3 hover:bg-accent/30 transition-colors text-left"
+      <div
+        className="w-full flex items-center gap-2 p-3 hover:bg-accent/30 transition-colors"
         style={{ paddingLeft: `${depth * 24 + 12}px` }}
-        onClick={() => setExpanded(!expanded)}
       >
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <button
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          <span className="font-medium text-sm flex-1 truncate">
+            {activity.name}
+          </span>
+        </button>
+
+        {/* Crew badge (when assigned, read-only view) */}
+        {activity.crewName && readOnly && (
+          <span className="inline-flex items-center gap-0.5 text-xs text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-1.5 py-0.5 rounded shrink-0">
+            <User className="h-2.5 w-2.5" />
+            {activity.crewName}
+          </span>
         )}
-        <span className="font-medium text-sm flex-1">{activity.name}</span>
-        <span className="text-sm font-medium text-muted-foreground">
+
+        {/* Crew selector (coordinator+) */}
+        {!readOnly && crewMembers.length > 0 && (
+          <Select
+            value={activity.crewId ?? "__none__"}
+            onValueChange={handleCrewChange}
+          >
+            <SelectTrigger className="h-7 w-[90px] text-xs border-dashed shrink-0">
+              <SelectValue placeholder="Assign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">
+                <span className="text-muted-foreground">None</span>
+              </SelectItem>
+              {crewMembers.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <span className="text-sm font-medium text-muted-foreground shrink-0">
           {formatCurrency(groupTotal)}
         </span>
-      </button>
+      </div>
       {expanded && (
         <div className="border-t">
           {(activity.children ?? []).map((child) => (
