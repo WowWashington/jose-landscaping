@@ -4,12 +4,16 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatHours } from "@/lib/calculations";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2,
   Clock,
   FolderKanban,
   DollarSign,
   ChevronRight,
+  Calendar,
+  User,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -39,6 +43,27 @@ type PersonSummary = {
   projects: ProjectDetail[];
 };
 
+type ScheduledActivity = {
+  id: string;
+  name: string;
+  crewName: string | null;
+  hours: number;
+  cost: number;
+  isComplete: boolean;
+};
+
+type ScheduledProject = {
+  projectId: string;
+  projectName: string;
+  quoteNumber: string | null;
+  startDate: string | null;
+  status: string | null;
+  leadCrewName: string | null;
+  totalTasks: number;
+  completedTasks: number;
+  activities: ScheduledActivity[];
+};
+
 type ReportData = {
   people: PersonSummary[];
   totals: {
@@ -47,6 +72,7 @@ type ReportData = {
     totalCost: number;
     projectCount: number;
   };
+  scheduled: ScheduledProject[];
   allPeople: { id: string; name: string }[];
 };
 
@@ -414,6 +440,90 @@ export default function ReportsPage() {
             <p className="py-8 text-center text-sm text-muted-foreground">
               No completed tasks for this person in this period.
             </p>
+          )}
+
+          {/* Scheduled Projects */}
+          {!selectedPerson && data.scheduled && data.scheduled.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Scheduled Work
+                </h2>
+                {data.scheduled.map((proj) => (
+                  <div
+                    key={proj.projectId}
+                    className="rounded-lg border overflow-hidden"
+                  >
+                    <div className="bg-muted/30 px-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href={`/projects/${proj.projectId}`}
+                          className="text-sm font-medium hover:underline"
+                        >
+                          {proj.projectName}
+                          {proj.quoteNumber && (
+                            <span className="font-mono text-xs text-muted-foreground ml-1.5">
+                              ({proj.quoteNumber})
+                            </span>
+                          )}
+                        </Link>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {proj.status ?? "draft"}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                        {proj.startDate && (
+                          <span>
+                            {new Date(proj.startDate.includes("T") ? proj.startDate : proj.startDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                            {proj.startDate.includes("T") && (
+                              <> at {new Date(proj.startDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</>
+                            )}
+                          </span>
+                        )}
+                        {proj.leadCrewName && (
+                          <span className="flex items-center gap-0.5">
+                            <User className="h-3 w-3" />
+                            {proj.leadCrewName}
+                          </span>
+                        )}
+                        <span>
+                          {proj.completedTasks}/{proj.totalTasks} done
+                        </span>
+                      </div>
+                    </div>
+                    {proj.activities.length > 0 && (
+                      <div className="divide-y">
+                        {proj.activities.map((act) => (
+                          <div
+                            key={act.id}
+                            className={`px-3 py-1.5 flex items-center justify-between text-sm ${act.isComplete ? "opacity-50" : ""}`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <CheckCircle2
+                                className={`h-3.5 w-3.5 shrink-0 ${act.isComplete ? "text-green-600" : "text-muted-foreground/30"}`}
+                              />
+                              <span className={act.isComplete ? "line-through" : ""}>
+                                {act.name}
+                              </span>
+                              {act.crewName && (
+                                <span className="text-xs text-blue-600 bg-blue-50 px-1 py-0.5 rounded shrink-0">
+                                  {act.crewName}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                              {act.hours > 0 && formatHours(act.hours)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </>
       )}

@@ -4,6 +4,13 @@ import { and, gte, lt, eq, inArray, asc, isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/get-session-user";
 
+function toDateStr(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 /**
  * GET /api/reports/worker-summary?startDate=2026-02-24&endDate=2026-03-02&tz=480
  *
@@ -42,7 +49,7 @@ export async function GET(request: NextRequest) {
     const rangeEnd = new Date(rangeEndBase.getTime() + 24 * 60 * 60 * 1000);
 
     // 1. Get completion entries from changeLog
-    const completionEntries = db
+    const rawCompletions = db
       .select()
       .from(changeLog)
       .where(
@@ -56,10 +63,25 @@ export async function GET(request: NextRequest) {
       .all()
       .filter((e) => e.details !== "reopened");
 
+    // Deduplicate: if the same activity was completed multiple times,
+    // only count the most recent completion
+    const seenActivities = new Map<string, (typeof rawCompletions)[0]>();
+    for (const entry of rawCompletions) {
+      const key = entry.activityId ?? entry.id;
+      const existing = seenActivities.get(key);
+      if (
+        !existing ||
+        (entry.createdAt && existing.createdAt && entry.createdAt > existing.createdAt)
+      ) {
+        seenActivities.set(key, entry);
+      }
+    }
+    const deduped = [...seenActivities.values()];
+
     // 2. Batch-fetch activity data for hours/cost
     const activityIds = [
       ...new Set(
-        completionEntries
+        deduped
           .map((e) => e.activityId)
           .filter((id): id is string => !!id)
       ),
@@ -67,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     const activityMap = new Map<
       string,
-      { hours: number | null; cost: number | null; quantity: number | null }
+      { hours: number | null; cost: number | null; quantity: number | null; isComplete: boolean | null }
     >();
     if (activityIds.length > 0) {
       const rows = db
@@ -76,6 +98,7 @@ export async function GET(request: NextRequest) {
           hours: projectActivities.hours,
           cost: projectActivities.cost,
           quantity: projectActivities.quantity,
+          isComplete: projectActivities.isComplete,
         })
         .from(projectActivities)
         .where(inArray(projectActivities.id, activityIds))
@@ -84,6 +107,13 @@ export async function GET(request: NextRequest) {
         activityMap.set(a.id, a);
       }
     }
+
+    // Filter out tasks that are currently NOT complete (reopened after completion)
+    const completionEntries = deduped.filter((e) => {
+      if (!e.activityId) return true;
+      const act = activityMap.get(e.activityId);
+      return !act || act.isComplete;
+    });
 
     // 3. Batch-fetch project data
     const projectIds = [
@@ -216,7 +246,102 @@ export async function GET(request: NextRequest) {
       })
       .sort((a, b) => b.tasksCompleted - a.tasksCompleted);
 
-    // 6. All people for the dropdown
+    // 6. Scheduled projects in the date range
+    // startDate is stored as local date text ("2026-03-02" or "2026-03-02T09:00")
+    // Compute the day after endStr for an exclusive upper bound
+    const dayAfterEnd = new Date(endStr + "T12:00:00");
+    dayAfterEnd.setDate(dayAfterEnd.getDate() + 1);
+    const dayAfterEndStr = toDateStr(dayAfterEnd);
+
+    const scheduledRows = db
+      .select()
+      .from(projects)
+      .where(
+        and(
+          isNotNull(projects.startDate),
+          gte(projects.startDate, startStr),
+          lt(projects.startDate, dayAfterEndStr)
+        )
+      )
+      .all();
+
+    // Batch-fetch activities for scheduled projects
+    const schedProjectIds = scheduledRows.map((p) => p.id);
+    let schedActivities: {
+      id: string;
+      projectId: string;
+      name: string;
+      crewId: string | null;
+      hours: number | null;
+      cost: number | null;
+      quantity: number | null;
+      isComplete: boolean | null;
+    }[] = [];
+    if (schedProjectIds.length > 0) {
+      schedActivities = db
+        .select({
+          id: projectActivities.id,
+          projectId: projectActivities.projectId,
+          name: projectActivities.name,
+          crewId: projectActivities.crewId,
+          hours: projectActivities.hours,
+          cost: projectActivities.cost,
+          quantity: projectActivities.quantity,
+          isComplete: projectActivities.isComplete,
+        })
+        .from(projectActivities)
+        .where(inArray(projectActivities.projectId, schedProjectIds))
+        .all();
+    }
+
+    // Build crew name map
+    const crewIds = [
+      ...new Set(
+        [
+          ...scheduledRows.map((p) => p.leadCrewId),
+          ...schedActivities.map((a) => a.crewId),
+        ].filter((id): id is string => !!id)
+      ),
+    ];
+    const crewNameMap = new Map<string, string>();
+    if (crewIds.length > 0) {
+      const crewRows = db
+        .select({ id: users.id, name: users.name })
+        .from(users)
+        .where(inArray(users.id, crewIds))
+        .all();
+      for (const c of crewRows) {
+        crewNameMap.set(c.id, c.name);
+      }
+    }
+
+    const scheduled = scheduledRows.map((p) => {
+      const acts = schedActivities.filter((a) => a.projectId === p.id);
+      const totalTasks = acts.length;
+      const completedTasks = acts.filter((a) => a.isComplete).length;
+      return {
+        projectId: p.id,
+        projectName: p.name,
+        quoteNumber: p.quoteNumber,
+        startDate: p.startDate,
+        status: p.status,
+        leadCrewName: p.leadCrewId
+          ? crewNameMap.get(p.leadCrewId) ?? null
+          : null,
+        totalTasks,
+        completedTasks,
+        activities: acts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          crewName: a.crewId ? crewNameMap.get(a.crewId) ?? null : null,
+          hours: (a.hours ?? 0) * (a.quantity ?? 1),
+          cost: (a.cost ?? 0) * (a.quantity ?? 1),
+          isComplete: a.isComplete ?? false,
+        })),
+      };
+    });
+
+    // 7. All people for the dropdown
     const allPeople = db
       .select({ id: users.id, name: users.name })
       .from(users)
@@ -232,6 +357,7 @@ export async function GET(request: NextRequest) {
         totalCost: Math.round(grandTotalCost * 100) / 100,
         projectCount: allProjectIdsSet.size,
       },
+      scheduled,
       allPeople,
     });
   } catch (error) {
