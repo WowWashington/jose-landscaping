@@ -55,7 +55,6 @@ export function ScheduleCalendar({
       monthLabel: string;
       projectIds: string[];
       isToday: boolean;
-      isWeekend: boolean;
     }[] = [];
 
     for (let i = 0; i < 14; i++) {
@@ -73,7 +72,6 @@ export function ScheduleCalendar({
             : "",
         projectIds: dayMap.get(dateStr) ?? [],
         isToday: dateStr === todayStr,
-        isWeekend: dow === 0 || dow === 6,
       });
     }
     return result;
@@ -137,10 +135,6 @@ export function ScheduleCalendar({
                 "flex flex-col items-center py-1 px-0.5 rounded-md text-xs transition-colors relative",
                 // Hide columns 8-14 on mobile
                 i >= 7 ? "hidden sm:flex" : "",
-                // Weekend dimming
-                cell.isWeekend && !isSelected
-                  ? "text-muted-foreground/60"
-                  : "",
                 // Today ring
                 cell.isToday ? "ring-1 ring-green-400" : "",
                 // Selected state
