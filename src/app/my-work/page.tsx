@@ -87,10 +87,6 @@ export default function MyWorkPage() {
     load();
   }
 
-  if (loading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
-  }
-
   const divIcon = (div: string | null) =>
     div === "general_contracting" ? "\u{1F528}" : "\u{1F33F}";
 
@@ -114,6 +110,10 @@ export default function MyWorkPage() {
     ];
     return buildScheduleDays(scheduleProjects);
   }, [data]);
+
+  if (loading) {
+    return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
+  }
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto">
