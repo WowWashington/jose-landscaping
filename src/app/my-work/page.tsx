@@ -63,7 +63,10 @@ export default function MyWorkPage() {
 
   const load = useCallback(() => {
     fetch("/api/my-work")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load");
+        return r.json();
+      })
       .then((d) => {
         setData(d);
         setLoading(false);
@@ -92,7 +95,7 @@ export default function MyWorkPage() {
     div === "general_contracting" ? "\u{1F528}" : "\u{1F33F}";
 
   const scheduleDays = useMemo(() => {
-    if (!data) return [];
+    if (!data?.today) return [];
     const scheduleProjects = [
       ...data.today.map((t) => ({
         id: t.project.id,
