@@ -200,7 +200,7 @@ export function ActivityRow({
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
+        <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
           {/* Photos link */}
           <Link
             href={`/activities/${activity.id}/photos`}
