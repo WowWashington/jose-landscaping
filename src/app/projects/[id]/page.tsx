@@ -742,11 +742,15 @@ export default function ProjectDetailPage() {
                       {entry.entityName && (
                         <span className="font-medium">{entry.entityName}</span>
                       )}
-                      {entry.details && (
+                      {entry.action === "completed" && entry.details === "reopened" ? (
+                        <span className="text-amber-600 ml-1 font-medium">
+                          (reopened)
+                        </span>
+                      ) : entry.details ? (
                         <span className="text-muted-foreground ml-1">
                           ({entry.details})
                         </span>
-                      )}
+                      ) : null}
                     </span>
                   </div>
                 );

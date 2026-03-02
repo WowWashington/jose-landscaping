@@ -77,6 +77,14 @@ function describeAction(entry: LogEntry): {
 } {
   const { action, entity, details } = entry;
 
+  if (action === "completed" && entity === "activity" && details === "reopened") {
+    return {
+      icon: <RotateCcw className="h-4 w-4 text-amber-600" />,
+      label: "Task completed (reopened)",
+      color: "bg-amber-50 text-amber-700 border-amber-200",
+    };
+  }
+
   if (action === "completed" && entity === "activity") {
     return {
       icon: <CheckCircle2 className="h-4 w-4 text-green-600" />,
@@ -218,7 +226,7 @@ export default function ActivityLogPage() {
   // Group entries by category for summary counts (from unfiltered-by-type, but respecting user filter)
   const userFiltered = filterUser ? entries.filter((e) => e.userName === filterUser) : entries;
   const tasksDone = userFiltered.filter(
-    (e) => e.action === "completed" && e.entity === "activity"
+    (e) => e.action === "completed" && e.entity === "activity" && e.details !== "reopened"
   ).length;
   const quotesCreated = userFiltered.filter(
     (e) => e.action === "created" && e.entity === "project"

@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { projectActivities, activityPhotos } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { projectActivities, activityPhotos, changeLog } from "@/db/schema";
+import { eq, inArray, and, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { logChange } from "@/lib/log-change";
 import { getSessionUser } from "@/lib/get-session-user";
@@ -80,6 +80,30 @@ export async function PUT(request: NextRequest, { params }: Params) {
         entity: "activity",
         entityName: existing.name,
       });
+
+      // When reopening, flag the most recent "completed" entry as reopened
+      if (!body.isComplete) {
+        const lastCompleted = db
+          .select({ id: changeLog.id })
+          .from(changeLog)
+          .where(
+            and(
+              eq(changeLog.activityId, id),
+              eq(changeLog.action, "completed"),
+              eq(changeLog.entity, "activity")
+            )
+          )
+          .orderBy(desc(changeLog.createdAt))
+          .limit(1)
+          .get();
+
+        if (lastCompleted) {
+          db.update(changeLog)
+            .set({ details: "reopened" })
+            .where(eq(changeLog.id, lastCompleted.id))
+            .run();
+        }
+      }
     } else {
       const fields = Object.keys(body);
       logChange({
