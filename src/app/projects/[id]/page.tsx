@@ -60,6 +60,7 @@ import {
 } from "@/lib/format-project-email";
 import { MaskedField } from "@/components/ui/masked-field";
 import { useSettings } from "@/lib/use-settings";
+import { PhotoViewer } from "@/components/ui/photo-viewer";
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -78,6 +79,8 @@ export default function ProjectDetailPage() {
   const [workerNote, setWorkerNote] = useState("");
   const [changeLog, setChangeLog] = useState<ChangeLogEntry[]>([]);
   const [logExpanded, setLogExpanded] = useState(false);
+  // Cover photo viewer
+  const [coverViewerOpen, setCoverViewerOpen] = useState(false);
   // Email dialog state
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
@@ -291,31 +294,21 @@ export default function ProjectDetailPage() {
         {/* Cover photo (top-right) */}
         <div className="shrink-0 flex flex-col items-center gap-1">
           {project.coverPhoto ? (
-            <label className="cursor-pointer group relative">
-              <div className="w-16 h-16 rounded-lg overflow-hidden border bg-muted">
-                <img
-                  src={`/api/uploads/${project.coverPhoto}`}
-                  alt="Cover"
-                  className="object-cover w-full h-full"
-                />
-              </div>
+            <div
+              className="cursor-pointer group relative w-16 h-16 rounded-lg overflow-hidden border bg-muted"
+              onClick={() => setCoverViewerOpen(true)}
+            >
+              <img
+                src={`/api/uploads/${project.coverPhoto}`}
+                alt="Cover"
+                className="object-cover w-full h-full"
+              />
               {canEdit && (
-                <>
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                    <Camera className="h-4 w-4 text-white" />
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) uploadCoverPhoto(f);
-                    }}
-                  />
-                </>
+                <div className="absolute bottom-0.5 right-0.5 bg-black/50 rounded-full p-0.5">
+                  <Camera className="h-3 w-3 text-white" />
+                </div>
               )}
-            </label>
+            </div>
           ) : canEdit ? (
             <label className="cursor-pointer w-16 h-16 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-muted-foreground/50 hover:border-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">
               <Camera className="h-5 w-5" />
@@ -331,6 +324,20 @@ export default function ProjectDetailPage() {
               />
             </label>
           ) : null}
+          {/* Hidden file input for replace from lightbox */}
+          <input
+            id="cover-photo-input"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) {
+                uploadCoverPhoto(f);
+                setCoverViewerOpen(false);
+              }
+            }}
+          />
         </div>
 
         <div className="flex items-center gap-2">
@@ -738,6 +745,28 @@ export default function ProjectDetailPage() {
         division={project.division}
         onAdded={load}
       />
+
+      {/* Cover photo lightbox */}
+      {project.coverPhoto && (
+        <PhotoViewer
+          src={`/api/uploads/${project.coverPhoto}`}
+          alt="Cover photo"
+          open={coverViewerOpen}
+          onClose={() => setCoverViewerOpen(false)}
+        >
+          {canEdit && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => document.getElementById("cover-photo-input")?.click()}
+            >
+              <Camera className="h-4 w-4" />
+              Replace
+            </Button>
+          )}
+        </PhotoViewer>
+      )}
 
       {/* Email Status dialog */}
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>

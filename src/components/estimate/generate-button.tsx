@@ -18,7 +18,7 @@ export function GenerateEstimateButton({ project }: { project: Project }) {
     try {
       const data = formatEstimateData(project);
       const blob = await pdf(
-        <EstimatePDF data={data} businessName={settings.businessName} businessSubtitle={settings.businessSubtitle} />
+        <EstimatePDF data={data} businessName={settings.businessName} businessSubtitle={settings.businessSubtitle} businessPhone={settings.businessPhone} businessAddress={settings.businessAddress} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -36,7 +36,7 @@ export function GenerateEstimateButton({ project }: { project: Project }) {
     try {
       const data = formatEstimateData(project);
       const blob = await pdf(
-        <EstimatePDF data={data} businessName={settings.businessName} businessSubtitle={settings.businessSubtitle} />
+        <EstimatePDF data={data} businessName={settings.businessName} businessSubtitle={settings.businessSubtitle} businessPhone={settings.businessPhone} businessAddress={settings.businessAddress} />
       ).toBlob();
 
       // Create a download first (since mailto can't attach files directly)

@@ -6,6 +6,8 @@ export type AppSettings = {
   maskContactsForWorkers: boolean;
   businessName: string;
   businessSubtitle: string;
+  businessPhone: string;
+  businessAddress: string;
   enableYardCare: boolean;
   enableContracting: boolean;
 };
@@ -14,6 +16,8 @@ export const defaultSettings: AppSettings = {
   maskContactsForWorkers: true,
   businessName: "Landscaping and Services",
   businessSubtitle: "Landscaping & Outdoor Services",
+  businessPhone: "",
+  businessAddress: "",
   enableYardCare: true,
   enableContracting: true,
 };
@@ -30,6 +34,8 @@ export function useSettings(): { settings: AppSettings; loading: boolean; refres
           maskContactsForWorkers: data.maskContactsForWorkers !== "false",
           businessName: data.businessName || defaultSettings.businessName,
           businessSubtitle: data.businessSubtitle || defaultSettings.businessSubtitle,
+          businessPhone: data.businessPhone ?? "",
+          businessAddress: data.businessAddress ?? "",
           enableYardCare: data.enableYardCare !== "false",
           enableContracting: data.enableContracting !== "false",
         });

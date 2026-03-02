@@ -8,6 +8,8 @@ const defaults = [
   { key: "maskContactsForWorkers", value: "true" },
   { key: "businessName", value: "Landscaping and Services" },
   { key: "businessSubtitle", value: "Landscaping & Outdoor Services" },
+  { key: "businessPhone", value: "" },
+  { key: "businessAddress", value: "" },
   { key: "enableYardCare", value: "true" },
   { key: "enableContracting", value: "true" },
 ];

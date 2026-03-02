@@ -15,6 +15,8 @@ export default function SettingsPage() {
   const [maskContacts, setMaskContacts] = useState(true);
   const [businessName, setBusinessName] = useState("Landscaping and Services");
   const [businessSubtitle, setBusinessSubtitle] = useState("Landscaping & Outdoor Services");
+  const [businessPhone, setBusinessPhone] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
   const [enableYardCare, setEnableYardCare] = useState(true);
   const [enableContracting, setEnableContracting] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -22,6 +24,8 @@ export default function SettingsPage() {
   const [loaded, setLoaded] = useState(false);
   const [initialName, setInitialName] = useState("");
   const [initialSubtitle, setInitialSubtitle] = useState("");
+  const [initialPhone, setInitialPhone] = useState("");
+  const [initialAddress, setInitialAddress] = useState("");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -35,6 +39,14 @@ export default function SettingsPage() {
         if (data.businessSubtitle) {
           setBusinessSubtitle(data.businessSubtitle);
           setInitialSubtitle(data.businessSubtitle);
+        }
+        if (data.businessPhone != null) {
+          setBusinessPhone(data.businessPhone);
+          setInitialPhone(data.businessPhone);
+        }
+        if (data.businessAddress != null) {
+          setBusinessAddress(data.businessAddress);
+          setInitialAddress(data.businessAddress);
         }
         setEnableYardCare(data.enableYardCare !== "false");
         setEnableContracting(data.enableContracting !== "false");
@@ -123,7 +135,37 @@ export default function SettingsPage() {
               Shown below the business name on PDF estimates.
             </p>
           </div>
-          {(businessName !== initialName || businessSubtitle !== initialSubtitle) && (
+          <div>
+            <Label htmlFor="businessPhone" className="text-sm font-medium">
+              Phone
+            </Label>
+            <Input
+              id="businessPhone"
+              value={businessPhone}
+              onChange={(e) => { setBusinessPhone(e.target.value); setSaved(false); }}
+              placeholder="(555) 123-4567"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Shown on PDF estimates so customers can reach you.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="businessAddress" className="text-sm font-medium">
+              Address
+            </Label>
+            <Input
+              id="businessAddress"
+              value={businessAddress}
+              onChange={(e) => { setBusinessAddress(e.target.value); setSaved(false); }}
+              placeholder="123 Main St, City, ST 12345"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Shown on PDF estimates.
+            </p>
+          </div>
+          {(businessName !== initialName || businessSubtitle !== initialSubtitle || businessPhone !== initialPhone || businessAddress !== initialAddress) && (
             <Button
               size="sm"
               disabled={saving}
@@ -137,6 +179,14 @@ export default function SettingsPage() {
                   await saveSetting("businessSubtitle", businessSubtitle);
                   setInitialSubtitle(businessSubtitle);
                 }
+                if (businessPhone !== initialPhone) {
+                  await saveSetting("businessPhone", businessPhone);
+                  setInitialPhone(businessPhone);
+                }
+                if (businessAddress !== initialAddress) {
+                  await saveSetting("businessAddress", businessAddress);
+                  setInitialAddress(businessAddress);
+                }
                 setSaving(false);
                 setSaved(true);
                 setTimeout(() => setSaved(false), 2000);
@@ -145,7 +195,7 @@ export default function SettingsPage() {
               {saving ? "Saving..." : saved ? <><Check className="h-4 w-4 mr-1" /> Saved</> : "Save"}
             </Button>
           )}
-          {saved && businessName === initialName && businessSubtitle === initialSubtitle && (
+          {saved && businessName === initialName && businessSubtitle === initialSubtitle && businessPhone === initialPhone && businessAddress === initialAddress && (
             <p className="text-xs text-green-600 flex items-center gap-1">
               <Check className="h-3 w-3" /> Saved
             </p>

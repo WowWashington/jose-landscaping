@@ -19,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { compressImage } from "@/lib/compress-image";
+import { PhotoViewer } from "@/components/ui/photo-viewer";
 
 export default function ActivityPhotosPage() {
   const params = useParams();
@@ -33,6 +34,7 @@ export default function ActivityPhotosPage() {
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNote, setEditNote] = useState("");
+  const [viewingPhoto, setViewingPhoto] = useState<ActivityPhoto | null>(null);
 
   const loadPhotos = useCallback(() => {
     fetch(`/api/activities/${activityId}/photos`)
@@ -187,7 +189,10 @@ export default function ActivityPhotosPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {photos.map((photo) => (
             <Card key={photo.id} className="overflow-hidden">
-              <div className="relative aspect-video bg-muted">
+              <div
+                className="relative aspect-video bg-muted cursor-pointer"
+                onClick={() => setViewingPhoto(photo)}
+              >
                 <img
                   src={`/api/uploads/${photo.fileName}`}
                   alt={photo.note ?? "Activity photo"}
@@ -274,6 +279,16 @@ export default function ActivityPhotosPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Photo lightbox */}
+      {viewingPhoto && (
+        <PhotoViewer
+          src={`/api/uploads/${viewingPhoto.fileName}`}
+          alt={viewingPhoto.note ?? "Activity photo"}
+          open={!!viewingPhoto}
+          onClose={() => setViewingPhoto(null)}
+        />
       )}
     </div>
   );
