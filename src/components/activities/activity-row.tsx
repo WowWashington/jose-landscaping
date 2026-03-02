@@ -101,9 +101,10 @@ export function ActivityRow({
 
       <div className="flex-1 min-w-0">
         <span
-          className={`text-sm ${
+          className={`text-sm block truncate ${
             displayComplete ? "line-through text-muted-foreground" : ""
           }`}
+          title={activity.name}
         >
           {activity.name}
         </span>
