@@ -1,9 +1,12 @@
 import { db } from "@/db";
-import { projectActivities } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { projectActivities, activityPhotos } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { logChange } from "@/lib/log-change";
 import { getSessionUser } from "@/lib/get-session-user";
+import { unlink } from "fs/promises";
+import path from "path";
+import { getUploadsDir } from "@/lib/uploads";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -131,25 +134,49 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       entityName: existing.name,
     });
 
-    // Delete grandchildren first (children of children)
+    // Collect all activity IDs to delete (self + children + grandchildren)
     const children = db
       .select()
       .from(projectActivities)
       .where(eq(projectActivities.parentActivityId, id))
       .all();
 
+    const allIds = [id, ...children.map((c) => c.id)];
+    for (const child of children) {
+      const grandchildren = db
+        .select()
+        .from(projectActivities)
+        .where(eq(projectActivities.parentActivityId, child.id))
+        .all();
+      allIds.push(...grandchildren.map((gc) => gc.id));
+    }
+
+    // Delete associated photos from disk and DB
+    const photos = db
+      .select()
+      .from(activityPhotos)
+      .where(inArray(activityPhotos.activityId, allIds))
+      .all();
+
+    const uploadsDir = getUploadsDir();
+    for (const photo of photos) {
+      try { await unlink(path.join(uploadsDir, photo.fileName)); } catch {}
+    }
+    if (photos.length > 0) {
+      db.delete(activityPhotos)
+        .where(inArray(activityPhotos.activityId, allIds))
+        .run();
+    }
+
+    // Delete grandchildren, children, then self
     for (const child of children) {
       db.delete(projectActivities)
         .where(eq(projectActivities.parentActivityId, child.id))
         .run();
     }
-
-    // Delete direct children
     db.delete(projectActivities)
       .where(eq(projectActivities.parentActivityId, id))
       .run();
-
-    // Delete the activity itself
     db.delete(projectActivities)
       .where(eq(projectActivities.id, id))
       .run();

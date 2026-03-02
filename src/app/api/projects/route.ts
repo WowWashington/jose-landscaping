@@ -34,38 +34,28 @@ export async function GET(request: NextRequest) {
         .all();
     }
 
-    // Build name lookups (people and createdBy are now the same table)
+    // Batch-load all lookups once instead of per-project
     const allUsers = db.select().from(users).all();
     const crewMap = new Map(allUsers.map((u) => [u.id, u.name]));
-    const userMap = crewMap;
 
-    // Enrich each project with contact info and activity totals
+    const allContacts = db.select().from(contacts).all();
+    const contactMap = new Map(allContacts.map((c) => [c.id, c]));
+
+    const allActivities = db.select().from(projectActivities).all();
+    const activitiesByProject = new Map<string, typeof allActivities>();
+    for (const a of allActivities) {
+      const list = activitiesByProject.get(a.projectId) ?? [];
+      list.push(a);
+      activitiesByProject.set(a.projectId, list);
+    }
+
+    // Enrich each project
     const enriched = projectRows.map((project) => {
-      // Get contact
-      const contact = project.contactId
-        ? db
-            .select()
-            .from(contacts)
-            .where(eq(contacts.id, project.contactId))
-            .get()
-        : null;
+      const contact = project.contactId ? contactMap.get(project.contactId) ?? null : null;
+      const activities = activitiesByProject.get(project.id) ?? [];
 
-      // Get leaf activities (those with no children) for totalCost
-      // A leaf activity is one whose id does not appear as another activity's parentActivityId
-      const allActivities = db
-        .select()
-        .from(projectActivities)
-        .where(eq(projectActivities.projectId, project.id))
-        .all();
-
-      const parentIds = new Set(
-        allActivities
-          .map((a) => a.parentActivityId)
-          .filter((id): id is string => id !== null)
-      );
-
-      const leafActivities = allActivities.filter(
-        (a) => !allActivities.some((child) => child.parentActivityId === a.id)
+      const leafActivities = activities.filter(
+        (a) => !activities.some((child) => child.parentActivityId === a.id)
       );
 
       const totalCost = leafActivities.reduce(
@@ -78,12 +68,9 @@ export async function GET(request: NextRequest) {
         0
       );
 
-      const activityCount = allActivities.length;
-
-      // Collect unique assigned crew names
       const assignedCrewNames = [
         ...new Set(
-          allActivities
+          activities
             .map((a) => (a.crewId ? crewMap.get(a.crewId) : null))
             .filter((n): n is string => n !== null && n !== undefined)
         ),
@@ -92,12 +79,12 @@ export async function GET(request: NextRequest) {
       return {
         ...project,
         contact: contact ?? null,
-        activityCount,
+        activityCount: activities.length,
         totalCost: Math.round(totalCost * 100) / 100,
         totalHours: Math.round(totalHours * 10) / 10,
         assignedCrew: assignedCrewNames,
         leadCrewName: project.leadCrewId ? crewMap.get(project.leadCrewId) ?? null : null,
-        createdByName: project.createdBy ? userMap.get(project.createdBy) ?? null : null,
+        createdByName: project.createdBy ? crewMap.get(project.createdBy) ?? null : null,
       };
     });
 
@@ -129,7 +116,7 @@ export async function POST(request: NextRequest) {
       createdBy,
     } = body;
 
-    if (!name) {
+    if (!name?.trim()) {
       return NextResponse.json(
         { error: "Name is required" },
         { status: 400 }
@@ -142,7 +129,7 @@ export async function POST(request: NextRequest) {
         contactId: contactId ?? null,
         quoteNumber: generateQuoteNumber(),
         division: division ?? "yard_care",
-        name,
+        name: name.trim(),
         description,
         status: status ?? "draft",
         address,

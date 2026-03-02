@@ -14,6 +14,7 @@ import {
   ArrowRight,
   LogIn,
   LogOut,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -163,11 +164,15 @@ function describeAction(entry: LogEntry): {
   };
 }
 
+type FilterType = "completed" | "quotes" | "status" | "logins" | null;
+
 export default function ActivityLogPage() {
   const { canEdit } = useAuth();
   const [date, setDate] = useState(toLocalDateString(new Date()));
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterUser, setFilterUser] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<FilterType>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -191,17 +196,37 @@ export default function ActivityLogPage() {
     setDate(toLocalDateString(d));
   }
 
-  // Group entries by category for summary counts
-  const tasksDone = entries.filter(
+  // Reset filters when date changes
+  useEffect(() => {
+    setFilterUser(null);
+    setFilterType(null);
+  }, [date]);
+
+  // Unique user names for the user filter
+  const uniqueUsers = [...new Set(entries.map((e) => e.userName).filter((n): n is string => !!n))].sort();
+
+  // Apply filters
+  const filtered = entries.filter((e) => {
+    if (filterUser && e.userName !== filterUser) return false;
+    if (filterType === "completed" && !(e.action === "completed" && e.entity === "activity")) return false;
+    if (filterType === "quotes" && !(e.action === "created" && e.entity === "project")) return false;
+    if (filterType === "status" && !(e.action === "status_changed" && e.entity === "project")) return false;
+    if (filterType === "logins" && !(e.action === "login" && e.entity === "session")) return false;
+    return true;
+  });
+
+  // Group entries by category for summary counts (from unfiltered-by-type, but respecting user filter)
+  const userFiltered = filterUser ? entries.filter((e) => e.userName === filterUser) : entries;
+  const tasksDone = userFiltered.filter(
     (e) => e.action === "completed" && e.entity === "activity"
   ).length;
-  const quotesCreated = entries.filter(
+  const quotesCreated = userFiltered.filter(
     (e) => e.action === "created" && e.entity === "project"
   ).length;
-  const statusChanges = entries.filter(
+  const statusChanges = userFiltered.filter(
     (e) => e.action === "status_changed" && e.entity === "project"
   ).length;
-  const logins = entries.filter(
+  const logins = userFiltered.filter(
     (e) => e.action === "login" && e.entity === "session"
   ).length;
 
@@ -254,31 +279,61 @@ export default function ActivityLogPage() {
         )}
       </div>
 
-      {/* Date label */}
-      <p className="text-sm font-medium">{formatDisplayDate(date)}</p>
+      {/* Date label + user filter */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">{formatDisplayDate(date)}</p>
+        {uniqueUsers.length > 1 && (
+          <select
+            value={filterUser ?? ""}
+            onChange={(e) => setFilterUser(e.target.value || null)}
+            className="flex h-8 rounded-md border border-input bg-background px-2 text-sm"
+          >
+            <option value="">All people</option>
+            {uniqueUsers.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        )}
+      </div>
 
-      {/* Summary chips */}
+      {/* Summary chips — clickable to filter */}
       {!loading && entries.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {tasksDone > 0 && (
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              {tasksDone} task{tasksDone !== 1 ? "s" : ""} completed
-            </Badge>
+            <button onClick={() => setFilterType(filterType === "completed" ? null : "completed")}>
+              <Badge variant="outline" className={`cursor-pointer transition-all ${filterType === "completed" ? "ring-2 ring-green-400 bg-green-100 text-green-800 border-green-300" : "bg-green-50 text-green-700 border-green-200"}`}>
+                {tasksDone} task{tasksDone !== 1 ? "s" : ""} completed
+              </Badge>
+            </button>
           )}
           {quotesCreated > 0 && (
-            <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">
-              {quotesCreated} quote{quotesCreated !== 1 ? "s" : ""} created
-            </Badge>
+            <button onClick={() => setFilterType(filterType === "quotes" ? null : "quotes")}>
+              <Badge variant="outline" className={`cursor-pointer transition-all ${filterType === "quotes" ? "ring-2 ring-violet-400 bg-violet-100 text-violet-800 border-violet-300" : "bg-violet-50 text-violet-700 border-violet-200"}`}>
+                {quotesCreated} quote{quotesCreated !== 1 ? "s" : ""} created
+              </Badge>
+            </button>
           )}
           {statusChanges > 0 && (
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              {statusChanges} status change{statusChanges !== 1 ? "s" : ""}
-            </Badge>
+            <button onClick={() => setFilterType(filterType === "status" ? null : "status")}>
+              <Badge variant="outline" className={`cursor-pointer transition-all ${filterType === "status" ? "ring-2 ring-blue-400 bg-blue-100 text-blue-800 border-blue-300" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                {statusChanges} status change{statusChanges !== 1 ? "s" : ""}
+              </Badge>
+            </button>
           )}
           {logins > 0 && (
-            <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200">
-              {logins} login{logins !== 1 ? "s" : ""}
-            </Badge>
+            <button onClick={() => setFilterType(filterType === "logins" ? null : "logins")}>
+              <Badge variant="outline" className={`cursor-pointer transition-all ${filterType === "logins" ? "ring-2 ring-sky-400 bg-sky-100 text-sky-800 border-sky-300" : "bg-sky-50 text-sky-700 border-sky-200"}`}>
+                {logins} login{logins !== 1 ? "s" : ""}
+              </Badge>
+            </button>
+          )}
+          {(filterType || filterUser) && (
+            <button
+              onClick={() => { setFilterType(null); setFilterUser(null); }}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3 w-3" /> Clear filters
+            </button>
           )}
         </div>
       )}
@@ -292,9 +347,18 @@ export default function ActivityLogPage() {
             No activity recorded for this day.
           </p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            No matching entries.
+          </p>
+          <Button variant="ghost" size="sm" className="mt-2" onClick={() => { setFilterType(null); setFilterUser(null); }}>
+            Clear filters
+          </Button>
+        </div>
       ) : (
         <div className="space-y-2">
-          {entries.map((entry) => {
+          {filtered.map((entry) => {
             const { icon, label, color } = describeAction(entry);
 
             return (

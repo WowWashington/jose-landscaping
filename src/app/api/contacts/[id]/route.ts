@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { contacts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/get-session-user";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -32,9 +33,13 @@ export async function GET(_request: NextRequest, { params }: Params) {
   }
 }
 
-// PUT /api/contacts/:id — update a contact
+// PUT /api/contacts/:id — update a contact (coordinator+)
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const user = await getSessionUser();
+    if (!user || user.role === "worker") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const { id } = await params;
     const body = await request.json();
 
@@ -68,9 +73,13 @@ export async function PUT(request: NextRequest, { params }: Params) {
   }
 }
 
-// DELETE /api/contacts/:id — delete a contact
+// DELETE /api/contacts/:id — delete a contact (coordinator+)
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
+    const user = await getSessionUser();
+    if (!user || user.role === "worker") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const { id } = await params;
 
     const existing = db

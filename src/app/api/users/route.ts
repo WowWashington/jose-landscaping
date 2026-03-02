@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { users, changeLog } from "@/db/schema";
-import { asc, count, eq, desc } from "drizzle-orm";
+import { asc, count, eq, desc, max, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPin } from "@/lib/auth-utils";
 import { getSessionUser } from "@/lib/get-session-user";
@@ -14,24 +14,25 @@ export async function GET() {
       .orderBy(asc(users.name))
       .all();
 
-    // Build lastActivity lookup from change log
-    const lastActivityMap: Record<string, string> = {};
-    for (const u of rows) {
-      const latest = db
-        .select({ createdAt: changeLog.createdAt })
-        .from(changeLog)
-        .where(eq(changeLog.userId, u.id))
-        .orderBy(desc(changeLog.createdAt))
-        .limit(1)
-        .get();
-      if (latest?.createdAt) {
-        lastActivityMap[u.id] = latest.createdAt.toISOString();
-      }
-    }
+    // Single query for last activity per user
+    const lastActivities = db
+      .select({
+        userId: changeLog.userId,
+        lastAt: max(changeLog.createdAt).as("lastAt"),
+      })
+      .from(changeLog)
+      .groupBy(changeLog.userId)
+      .all();
+
+    const lastActivityMap = new Map(
+      lastActivities
+        .filter((r) => r.userId && r.lastAt)
+        .map((r) => [r.userId!, typeof r.lastAt === "string" ? r.lastAt : (r.lastAt as Date).toISOString()])
+    );
 
     const enriched = rows.map((u) => ({
       ...u,
-      lastActivity: lastActivityMap[u.id] ?? null,
+      lastActivity: lastActivityMap.get(u.id) ?? null,
     }));
 
     return NextResponse.json(enriched);

@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { contacts } from "@/db/schema";
 import { like, or, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/get-session-user";
 
 // GET /api/contacts — list all contacts, optional search with ?q=
 export async function GET(request: NextRequest) {
@@ -43,9 +44,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/contacts — create a new contact
+// POST /api/contacts — create a new contact (coordinator+)
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user || user.role === "worker") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const body = await request.json();
     const { name, phone, email, address, city, state, zip, notes, lastContactDate } = body;
 

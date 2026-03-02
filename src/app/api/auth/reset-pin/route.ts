@@ -118,16 +118,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fallback: return PIN directly
-    const phone = user.phone?.replace(/\D/g, "");
-    const smsUri = phone
-      ? `sms:${phone}?body=${encodeURIComponent(`Your new PIN is: ${plainPin}`)}`
-      : null;
-
+    // Fallback: instruct user to contact the owner
     return NextResponse.json({
-      method: "direct",
-      pin: plainPin,
-      ...(smsUri && { smsUri }),
+      method: "failed",
+      message: "Could not deliver PIN via SMS. Please contact the owner for your new PIN.",
     });
   } catch (error) {
     console.error("POST /api/auth/reset-pin error:", error);

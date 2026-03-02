@@ -141,6 +141,7 @@ export function ActivityRow({
               }
               className="w-20 h-7 text-xs"
               step="0.01"
+              min="0"
             />
           </div>
           <div className="flex items-center gap-1">
@@ -156,6 +157,7 @@ export function ActivityRow({
               }
               className="w-16 h-7 text-xs"
               step="1"
+              min="0"
             />
           </div>
           <div className="flex items-center gap-1">
@@ -171,6 +173,7 @@ export function ActivityRow({
               }
               className="w-16 h-7 text-xs"
               step="0.25"
+              min="0"
             />
           </div>
           <div className="flex items-center gap-1">
@@ -264,7 +267,9 @@ export function ActivityRow({
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7 text-destructive"
-                onClick={() => onDelete(activity.id)}
+                onClick={() => {
+                  if (confirm("Delete this activity?")) onDelete(activity.id);
+                }}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

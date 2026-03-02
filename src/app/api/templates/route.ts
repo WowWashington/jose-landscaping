@@ -3,6 +3,7 @@ import { taskTemplates } from "@/db/schema";
 import { like, or, and, eq, asc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import type { TaskTemplate } from "@/types";
+import { getSessionUser } from "@/lib/get-session-user";
 
 // GET /api/templates — list all templates as a hierarchical tree
 // Query params: ?q= (search), ?division= (filter by division)
@@ -73,9 +74,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/templates — create a new template
+// POST /api/templates — create a new template (coordinator+)
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user || user.role === "worker") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const body = await request.json();
     const {
       parentId,

@@ -87,14 +87,21 @@ export default function ProjectDetailPage() {
 
   const load = useCallback(() => {
     fetch(`/api/projects/${projectId}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load project");
+        return r.json();
+      })
       .then((data) => {
         setProject(data);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
     // Also load change log
     fetch(`/api/projects/${projectId}/log`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
       .then((data) => {
         if (Array.isArray(data)) setChangeLog(data);
       })
@@ -104,8 +111,12 @@ export default function ProjectDetailPage() {
   // Fetch people once
   useEffect(() => {
     fetch("/api/users")
-      .then((r) => r.json())
-      .then((data) => setCrewMembers(data));
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((data) => setCrewMembers(data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -116,16 +127,25 @@ export default function ProjectDetailPage() {
     id: string,
     data: Partial<ProjectActivity>
   ) {
-    await fetch(`/api/activities/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+    try {
+      const r = await fetch(`/api/activities/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!r.ok) console.error("Failed to update activity");
+    } catch (e) {
+      console.error("Failed to update activity", e);
+    }
     load();
   }
 
   async function deleteActivity(id: string) {
-    await fetch(`/api/activities/${id}`, { method: "DELETE" });
+    try {
+      await fetch(`/api/activities/${id}`, { method: "DELETE" });
+    } catch (e) {
+      console.error("Failed to delete activity", e);
+    }
     load();
   }
 
@@ -197,32 +217,46 @@ export default function ProjectDetailPage() {
   }
 
   async function updateStatus(status: string) {
-    await fetch(`/api/projects/${projectId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const r = await fetch(`/api/projects/${projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!r.ok) console.error("Failed to update status");
+    } catch (e) {
+      console.error("Failed to update status", e);
+    }
     load();
   }
 
   async function updateProjectField(field: string, value: any) {
-    await fetch(`/api/projects/${projectId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
+    try {
+      const r = await fetch(`/api/projects/${projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (!r.ok) console.error("Failed to update project");
+    } catch (e) {
+      console.error("Failed to update project", e);
+    }
     load();
   }
 
   async function uploadCoverPhoto(file: File) {
-    // Compress before upload — shrinks 35MB Samsung shots to ~200-500KB
-    const compressed = await compressImage(file);
-    const formData = new FormData();
-    formData.append("file", compressed);
-    await fetch(`/api/projects/${projectId}/cover`, {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const compressed = await compressImage(file);
+      const formData = new FormData();
+      formData.append("file", compressed);
+      const r = await fetch(`/api/projects/${projectId}/cover`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!r.ok) console.error("Failed to upload cover photo");
+    } catch (e) {
+      console.error("Failed to upload cover photo", e);
+    }
     load();
   }
 

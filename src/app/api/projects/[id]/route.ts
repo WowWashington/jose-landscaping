@@ -1,6 +1,9 @@
 import { db } from "@/db";
 import { contacts, projects, projectActivities, activityPhotos, users } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, inArray } from "drizzle-orm";
+import { unlink } from "fs/promises";
+import path from "path";
+import { getUploadsDir } from "@/lib/uploads";
 import { NextRequest, NextResponse } from "next/server";
 import type { ProjectActivity } from "@/types";
 import { logChange } from "@/lib/log-change";
@@ -222,7 +225,38 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       entityName: existing.name,
     });
 
-    // Delete all activities for this project first
+    // Delete all photos for this project's activities
+    const allActivities = db
+      .select()
+      .from(projectActivities)
+      .where(eq(projectActivities.projectId, id))
+      .all();
+
+    if (allActivities.length > 0) {
+      const activityIds = allActivities.map((a) => a.id);
+      const photos = db
+        .select()
+        .from(activityPhotos)
+        .where(inArray(activityPhotos.activityId, activityIds))
+        .all();
+
+      const uploadsDir = getUploadsDir();
+      for (const photo of photos) {
+        try { await unlink(path.join(uploadsDir, photo.fileName)); } catch {}
+      }
+      if (photos.length > 0) {
+        db.delete(activityPhotos)
+          .where(inArray(activityPhotos.activityId, activityIds))
+          .run();
+      }
+    }
+
+    // Delete cover photo file if present
+    if (existing.coverPhoto) {
+      try { await unlink(path.join(getUploadsDir(), existing.coverPhoto)); } catch {}
+    }
+
+    // Delete all activities for this project
     db.delete(projectActivities)
       .where(eq(projectActivities.projectId, id))
       .run();

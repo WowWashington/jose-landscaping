@@ -266,6 +266,7 @@ export function AddActivitySheet({
                     }}
                     placeholder="25"
                     step="0.50"
+                    min="0"
                   />
                 </div>
                 <span className="pb-2 text-muted-foreground font-medium">×</span>
@@ -281,6 +282,7 @@ export function AddActivitySheet({
                     }}
                     placeholder="2"
                     step="0.25"
+                    min="0"
                   />
                 </div>
                 <span className="pb-2 text-muted-foreground font-medium">×</span>

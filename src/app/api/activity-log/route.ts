@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(changeLog.createdAt))
       .all();
 
-    // Enrich with project quote numbers for display
+    // Enrich with project quote numbers for display (batch query)
     const projectIds = [
       ...new Set(
         entries
@@ -62,16 +62,14 @@ export async function GET(request: NextRequest) {
     const quoteMap = new Map<string, string>();
     const nameMap = new Map<string, string>();
     if (projectIds.length > 0) {
-      for (const pid of projectIds) {
-        const p = db
-          .select({ quoteNumber: projects.quoteNumber, name: projects.name })
-          .from(projects)
-          .where(eq(projects.id, pid))
-          .get();
-        if (p) {
-          if (p.quoteNumber) quoteMap.set(pid, p.quoteNumber);
-          nameMap.set(pid, p.name);
-        }
+      const projectRows = db
+        .select({ id: projects.id, quoteNumber: projects.quoteNumber, name: projects.name })
+        .from(projects)
+        .where(inArray(projects.id, projectIds))
+        .all();
+      for (const p of projectRows) {
+        if (p.quoteNumber) quoteMap.set(p.id, p.quoteNumber);
+        nameMap.set(p.id, p.name);
       }
     }
 

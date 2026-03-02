@@ -4,6 +4,7 @@ import { eq, asc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { copyTemplateToProject } from "@/lib/template-to-activities";
 import type { ProjectActivity } from "@/types";
+import { getSessionUser } from "@/lib/get-session-user";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -71,11 +72,15 @@ export async function GET(_request: NextRequest, { params }: Params) {
   }
 }
 
-// POST /api/projects/:id/activities — add an activity
+// POST /api/projects/:id/activities — add an activity (coordinator+)
 //   Body type "template": { type: "template", templateId, quantity?, includeSubTasks? }
 //   Body type "custom":   { type: "custom", name, cost?, hours?, manpower?, description? }
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const user = await getSessionUser();
+    if (!user || user.role === "worker") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const { id: projectId } = await params;
 
     // Verify project exists
