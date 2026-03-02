@@ -12,6 +12,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Pass commit SHA for build versioning
+ARG GITHUB_SHA=""
+ENV GITHUB_SHA=${GITHUB_SHA}
+
 # Build Next.js (standalone output)
 RUN npm run build
 

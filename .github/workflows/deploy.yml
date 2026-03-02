@@ -21,6 +21,7 @@ jobs:
       - name: Build and push Docker image
         run: |
           docker build \
+            --build-arg GITHUB_SHA=${{ github.sha }} \
             -t ${{ secrets.ACR_LOGIN_SERVER }}/field-service:${{ github.sha }} \
             -t ${{ secrets.ACR_LOGIN_SERVER }}/field-service:latest \
             .
