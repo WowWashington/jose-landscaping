@@ -264,6 +264,11 @@ export default function SettingsPage() {
           />
         </div>
       </div>
+
+      {/* Build version */}
+      <p className="text-xs text-muted-foreground text-center pt-2">
+        Build {process.env.NEXT_PUBLIC_BUILD_ID}
+      </p>
     </div>
   );
 }
