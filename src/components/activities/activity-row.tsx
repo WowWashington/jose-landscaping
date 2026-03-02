@@ -86,7 +86,7 @@ export function ActivityRow({
 
   return (
     <div
-      className={`flex items-start gap-2 py-2 px-3 hover:bg-accent/30 rounded transition-colors ${
+      className={`flex flex-wrap items-start gap-x-2 gap-y-1 py-2 px-3 hover:bg-accent/30 rounded transition-colors ${
         displayComplete ? "opacity-60" : ""
       } ${isPendingToggle ? "bg-yellow-50 dark:bg-yellow-950/20" : ""}`}
       style={{ paddingLeft: `${depth * 24 + 12}px` }}
@@ -101,10 +101,9 @@ export function ActivityRow({
 
       <div className="flex-1 min-w-0">
         <span
-          className={`text-sm block truncate ${
+          className={`text-sm ${
             displayComplete ? "line-through text-muted-foreground" : ""
           }`}
-          title={activity.name}
         >
           {activity.name}
         </span>
@@ -201,7 +200,7 @@ export function ActivityRow({
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           {/* Photos link */}
           <Link
             href={`/activities/${activity.id}/photos`}
