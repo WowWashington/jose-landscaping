@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,9 +11,10 @@ import {
   Clock,
   HardHat,
   MapPin,
-
 } from "lucide-react";
 import Link from "next/link";
+import { ScheduleCalendar } from "@/components/ui/schedule-calendar";
+import { buildScheduleDays } from "@/lib/schedule-utils";
 
 type MyActivity = {
   id: string;
@@ -57,6 +58,8 @@ export default function MyWorkPage() {
   const { user } = useAuth();
   const [data, setData] = useState<MyWorkData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(() => {
     fetch("/api/my-work")
@@ -88,11 +91,46 @@ export default function MyWorkPage() {
   const divIcon = (div: string | null) =>
     div === "general_contracting" ? "\u{1F528}" : "\u{1F33F}";
 
+  const scheduleDays = useMemo(() => {
+    if (!data) return [];
+    const scheduleProjects = [
+      ...data.today.map((t) => ({
+        id: t.project.id,
+        startDate: null,
+        dueDate: t.project.dueDate,
+        status: "active" as const,
+        confirmed: null,
+      })),
+      ...data.upcoming.map((u) => ({
+        id: u.project.id,
+        startDate: u.project.startDate,
+        dueDate: null,
+        status: "active" as const,
+        confirmed: null,
+      })),
+    ];
+    return buildScheduleDays(scheduleProjects);
+  }, [data]);
+
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto">
       <h1 className="text-xl font-semibold flex items-center gap-2 mb-4">
         <Briefcase className="h-5 w-5" /> My Work
       </h1>
+
+      <ScheduleCalendar
+        days={scheduleDays}
+        selectedDate={selectedDate}
+        onSelectDate={(date, ids) => {
+          if (date) {
+            setSelectedDate(date);
+            setHighlightedIds(new Set(ids));
+          } else {
+            setSelectedDate(null);
+            setHighlightedIds(new Set());
+          }
+        }}
+      />
 
       {/* Today's Work */}
       <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">
@@ -108,7 +146,14 @@ export default function MyWorkPage() {
       ) : (
         <div className="space-y-3 mb-6">
           {data?.today.map((item) => (
-            <Card key={item.project.id}>
+            <Card
+              key={item.project.id}
+              className={
+                selectedDate && highlightedIds.has(item.project.id)
+                  ? "ring-2 ring-green-300"
+                  : ""
+              }
+            >
               <CardContent className="p-4">
                 <Link
                   href={`/projects/${item.project.id}`}
@@ -211,7 +256,13 @@ export default function MyWorkPage() {
                 key={item.project.id}
                 href={`/projects/${item.project.id}`}
               >
-                <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+                <Card
+                  className={`hover:bg-accent/50 transition-colors cursor-pointer ${
+                    selectedDate && highlightedIds.has(item.project.id)
+                      ? "ring-2 ring-green-300"
+                      : ""
+                  }`}
+                >
                   <CardContent className="p-3 flex items-center justify-between">
                     <div className="min-w-0">
                       <p className="font-medium text-sm">

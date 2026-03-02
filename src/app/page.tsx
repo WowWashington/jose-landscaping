@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Plus, ArrowUpDown } from "lucide-react";
+import { Plus, ArrowUpDown, X } from "lucide-react";
 import { ProjectCard } from "@/components/projects/project-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScheduleCalendar } from "@/components/ui/schedule-calendar";
+import { buildScheduleDays } from "@/lib/schedule-utils";
 
 type ProjectListItem = {
   id: string;
@@ -38,6 +40,8 @@ export default function ProjectsPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("newest");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -79,8 +83,26 @@ export default function ProjectsPage() {
     }
     // "newest" keeps API order (desc createdAt)
 
+    // Schedule date filter
+    if (selectedDate && selectedProjectIds.length > 0) {
+      const ids = new Set(selectedProjectIds);
+      result = result.filter((p) => ids.has(p.id));
+    }
+
     return result;
-  }, [projects, search, sort]);
+  }, [projects, search, sort, selectedDate, selectedProjectIds]);
+
+  const scheduleDays = useMemo(
+    () =>
+      buildScheduleDays(
+        projects.filter(
+          (p) =>
+            p.status === "active" ||
+            (p.status === "quoted" && p.confirmed)
+        )
+      ),
+    [projects]
+  );
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto">
@@ -130,6 +152,38 @@ export default function ProjectsPage() {
           ))}
         </div>
       </div>
+
+      <ScheduleCalendar
+        days={scheduleDays}
+        selectedDate={selectedDate}
+        onSelectDate={(date, ids) => {
+          setSelectedDate(date);
+          setSelectedProjectIds(ids);
+        }}
+      />
+
+      {selectedDate && (
+        <div className="flex items-center gap-2 mb-3 text-sm">
+          <span className="text-muted-foreground">
+            Showing{" "}
+            {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => {
+              setSelectedDate(null);
+              setSelectedProjectIds([]);
+            }}
+          >
+            <X />
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
