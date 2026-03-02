@@ -185,7 +185,8 @@ export default function ActivityLogPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/activity-log?date=${date}`);
+      const tz = new Date().getTimezoneOffset();
+      const res = await fetch(`/api/activity-log?date=${date}&tz=${tz}`);
       if (res.ok) {
         setEntries(await res.json());
       }

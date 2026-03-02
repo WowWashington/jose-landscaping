@@ -18,14 +18,16 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   try {
     const dateParam = request.nextUrl.searchParams.get("date");
-    const date = dateParam ? new Date(dateParam + "T00:00:00") : new Date();
+    const tzOffset = parseInt(request.nextUrl.searchParams.get("tz") ?? "0");
 
-    // Build day boundaries
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
+    // Build day boundaries in UTC, adjusted for the client's timezone.
+    // tz = client's getTimezoneOffset() in minutes (e.g. 480 for PST).
+    // Local midnight in UTC = UTC midnight of that date + offset minutes.
+    const baseDateStr = dateParam ?? new Date().toISOString().slice(0, 10);
+    const dayStart = new Date(baseDateStr + "T00:00:00Z");
+    dayStart.setUTCMinutes(dayStart.getUTCMinutes() + tzOffset);
 
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
     // Actions we care about on the daily board
     const relevantActions = [

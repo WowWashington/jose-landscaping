@@ -325,8 +325,8 @@ export default function ProjectDetailPage() {
           )}
         </div>
 
-        {/* Cover photo (top-right) */}
-        <div className="shrink-0 flex flex-col items-center gap-1">
+        {/* Cover photo + status (stacked right) */}
+        <div className="shrink-0 flex flex-col items-end gap-2">
           {project.coverPhoto ? (
             <div
               className="cursor-pointer group relative w-16 h-16 rounded-lg overflow-hidden border bg-muted"
@@ -372,9 +372,7 @@ export default function ProjectDetailPage() {
               }
             }}
           />
-        </div>
 
-        <div className="flex items-center gap-2">
           {canEdit ? (
             <Select
               value={project.status ?? "draft"}
