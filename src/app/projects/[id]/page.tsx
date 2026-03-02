@@ -304,15 +304,13 @@ export default function ProjectDetailPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold truncate">{project.name}</h1>
-            {project.division && (
-              <Badge variant="outline" className="shrink-0 text-xs">
-                {project.division === "general_contracting" ? "🔨" : "🌿"}{" "}
-                {DIVISION_LABELS[project.division] ?? project.division}
-              </Badge>
-            )}
-          </div>
+          <h1 className="text-xl font-semibold truncate">{project.name}</h1>
+          {project.division && (
+            <Badge variant="outline" className="text-xs mt-0.5">
+              {project.division === "general_contracting" ? "🔨" : "🌿"}{" "}
+              {DIVISION_LABELS[project.division] ?? project.division}
+            </Badge>
+          )}
           {project.quoteNumber && (
             <span className="text-xs text-muted-foreground font-mono">
               {project.quoteNumber}
