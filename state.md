@@ -274,19 +274,55 @@ gh workflow run deploy.yml
 - Activity tree: 3-level hierarchy, template or free-text tasks, inline editing, completion tracking
 - Task template library: 60+ yard care sub-tasks, general contracting templates, search, reorder
 - Contacts: CRUD, picker combobox, last contact date
-- Crew management: CRUD, assignment to tasks + project lead, "last seen" indicator
-- Authentication: PIN login (bcrypt), cookie sessions, rate limiting, user invite flow
-- Authorization: 3-tier roles (owner/coordinator/worker), block/unblock users
+- Crew management: unified people model (users + crew merged into single entity), assignment to tasks + project lead, "last seen" indicator
+- Authentication: PIN login (bcrypt), cookie sessions, rate limiting, PIN reset via text/email, user invite flow with email + text options, sign-out-everywhere / session invalidation
+- Authorization: 3-tier roles (owner/coordinator/worker), block/unblock users, auth checks on all API endpoints
 - Contact data masking: toggle, masked display, reveal audit logging
-- My Work dashboard: personal assigned tasks, completion checkboxes, upcoming projects
+- My Work dashboard: personal assigned tasks, completion checkboxes, upcoming projects, schedule calendar
+- Schedule calendar: Projects page and My Work page show scheduled work per day, weekends treated equally (no dimming)
 - Enhanced project cards: rich data display, multi-field search, sort, status filter
-- PDF estimate generation: in-browser, line-item table, download/email
-- Activity log: cross-project audit trail, per-project timeline, manual notes, login/logout logging
-- Photo documentation: upload, compress, gallery, delete
-- Mobile-responsive UI: sidebar + bottom nav
+- PDF estimate generation: in-browser, line-item table, business contact info (phone/address from Settings), download/email
+- Activity log: cross-project audit trail, per-project timeline, manual notes, login/logout logging, filtering by user/status, reopened tasks flagged and excluded from completed count
+- Photo documentation: upload, compress, gallery, lightbox full-screen viewer, delete with confirmation dialog, photos served via API route
+- Mobile-responsive UI: sidebar + scrollable bottom nav (no overflow cutoff)
 - Project start time: date + time selector, displayed on project cards
 - Configurable branding: business name, subtitle, division toggles via Settings page
+- Build version: commit SHA displayed on Settings page
+- Input validation: whitespace-only names rejected, negative values blocked on cost/hours/quantity
+- Error handling: fetch calls wrapped with proper res.ok checks and user feedback on failures
+- Performance: N+1 queries resolved on project list and user list endpoints (batch queries/JOINs)
+- Security: PIN reset no longer leaks plain-text PIN, all mutation endpoints require proper role checks
+- Photo file cleanup: deleting activities/projects cascades to remove orphaned photo files on disk
 - Azure deployment: Docker container, auto-deploy from GitHub, persistent storage
+
+---
+
+## Resolved Issues (GitHub #2–#21)
+
+All 20 issues closed as of 2026-03-02:
+
+| # | Issue | Resolution |
+|---|-------|------------|
+| 2 | Forgotten login by any user | PIN reset via text/email invite, owner can reset from admin |
+| 3 | Mobile nav cut off | Scrollable bottom nav, no overflow |
+| 4 | Broken photo uploads | Photos served via API route instead of static files |
+| 5 | Unable to assign crew to activities | Crew selector on parent/header activities and sub-tasks |
+| 6 | Users vs crew confusion | Merged into single people entity |
+| 7 | Quote missing business contact info | Business phone/address from Settings displayed on PDF quotes |
+| 8 | Project photo only shown as icon | Photo lightbox viewer for full-screen viewing |
+| 9 | Daily log no filtering | Activity log filters by user and task status |
+| 10 | Deletion doesn't cascade to photo files | Photo files cleaned up on activity/project deletion |
+| 11 | Missing auth checks on endpoints | Auth guards added to contacts, templates, and activity APIs |
+| 12 | PIN reset returns plain-text PIN | PIN no longer returned in JSON response |
+| 13 | No error handling on fetch calls | All fetch chains check res.ok with user feedback |
+| 14 | Activity inputs accept negative values | min="0" constraints on cost, hours, quantity inputs |
+| 15 | No confirmation before deleting activity | Confirmation dialog added before delete |
+| 16 | N+1 queries on project/user list | Batch queries and JOINs for related data |
+| 17 | Whitespace-only project name | Name trimmed before validation |
+| 18 | Add calendar to Projects page | Schedule calendar on Projects and My Work pages |
+| 19 | Reopened task shows as completed | Reopened tasks flagged, excluded from completed count |
+| 20 | App unavailable after calendar push | Fixed hooks order crash and API error handling |
+| 21 | Calendar dims weekends | Weekend dimming removed — all days treated equally |
 
 ---
 
@@ -316,8 +352,8 @@ All in `docs/plans/`:
 
 ## Current Status
 
-**Last updated**: 2026-03-01
-**State**: Deployed and live on Azure
+**Last updated**: 2026-03-02
+**State**: Deployed and live on Azure — all 20 GitHub issues resolved
 **Live URL**: https://jose-services-app.azurewebsites.net
-**Recent changes**: Audit logging, project start times, crew last-seen, configurable branding, Azure CI/CD deployment
-**Next steps**: Test live app on mobile, add PWA support, consider logo upload
+**Recent changes**: Schedule calendars, unified people model (users+crew), PIN reset flow, photo lightbox, activity log filters, security hardening (auth checks, input validation, error handling), N+1 query fixes, build version display
+**Next steps**: PWA support, logo upload for branding, dashboard analytics

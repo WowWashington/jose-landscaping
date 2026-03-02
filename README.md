@@ -13,6 +13,7 @@ Existing tools like Jobber, LMN, and Yardbook are over-engineered and expensive 
 ### Project Management
 - Create and manage projects through a full status workflow (Draft → Quoted → Active → Completed)
 - Hierarchical activity trees — nest tasks 3 levels deep with cost, hours, and crew assignment per task
+- Schedule calendar on Projects page showing work committed per day
 - Auto-generated quote numbers (Q-YYMM-XXXX format)
 - Cover photo uploads with client-side image compression
 - Task completion tracking with who/when audit trail
@@ -25,14 +26,15 @@ Existing tools like Jobber, LMN, and Yardbook are over-engineered and expensive 
 
 ### My Work — Personal Dashboard
 - Each crew member sees their own assigned active projects and tasks
+- Personal schedule calendar showing assigned work per day
 - Inline task completion checkboxes
 - Upcoming confirmed jobs section
 - Shows other crew assigned to the same project for coordination
 
-### Crew & Contact Management
-- Manage crew members with availability and skill tracking
+### People & Contact Management
+- Unified people model — users and crew merged into a single entity with roles and permissions
+- Assign people to individual activities (parent and sub-tasks) or as project lead
 - Customer contacts with phone, email, address
-- Assign crew to individual tasks or as project lead
 
 ### Contact Data Masking
 - Owner-controlled toggle to mask customer phone/email from Workers
@@ -43,11 +45,13 @@ Existing tools like Jobber, LMN, and Yardbook are over-engineered and expensive 
 ### PDF Estimates
 - Generate professional PDF estimates in-browser
 - Line-item tables with quantities, unit costs, totals
+- Business contact info (phone, address) pulled from Settings
 - Business header, client info, terms and notes
 
 ### Activity Log & Audit Trail
 - Every action is logged: creates, edits, completions, deletions, photo uploads, status changes
-- Cross-project daily log view for coordinators
+- Cross-project daily log view for coordinators with filtering by user and task status
+- Reopened tasks flagged and excluded from "completed" count
 - Per-project timeline on detail page
 - Manual notes can be added to any project log
 
@@ -55,6 +59,8 @@ Existing tools like Jobber, LMN, and Yardbook are over-engineered and expensive 
 - Upload photos to individual activities for before/after documentation
 - Client-side compression before upload
 - Photo gallery per activity with notes
+- Lightbox viewer for full-screen photo viewing
+- Confirmation dialog before deleting photos or activities
 
 ## Roles & Permissions
 
@@ -64,7 +70,7 @@ Existing tools like Jobber, LMN, and Yardbook are over-engineered and expensive 
 | **Coordinator** | Manage projects, crew, contacts, library, daily log |
 | **Worker** | View projects, My Work page, complete assigned tasks |
 
-Authentication uses simple PINs (bcrypt hashed) — designed for field workers who need fast access, not corporate SSO.
+Authentication uses simple PINs (bcrypt hashed) — designed for field workers who need fast access, not corporate SSO. PIN reset via text/email invite. Session invalidation and sign-out-everywhere support.
 
 ## Tech Stack
 
