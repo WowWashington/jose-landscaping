@@ -1,10 +1,14 @@
 import type { NextConfig } from "next";
 import { execSync } from "child_process";
 
-let buildId = "dev";
-try {
-  buildId = execSync("git rev-parse --short HEAD").toString().trim();
-} catch {}
+let buildId = process.env.GITHUB_SHA?.slice(0, 7) ?? "";
+if (!buildId) {
+  try {
+    buildId = execSync("git rev-parse --short HEAD").toString().trim();
+  } catch {
+    buildId = "dev";
+  }
+}
 
 const nextConfig: NextConfig = {
   output: "standalone",
