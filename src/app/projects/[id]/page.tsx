@@ -75,8 +75,13 @@ export default function ProjectDetailPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   // Worker batching: toggled activity IDs that haven't been saved yet
   const [pendingToggles, setPendingToggles] = useState<Set<string>>(new Set());
+  const [pendingHours, setPendingHours] = useState<Map<string, string>>(new Map());
   const [saving, setSaving] = useState(false);
   const [workerNote, setWorkerNote] = useState("");
+  // Hours dialog for coordinator/owner immediate completion
+  const [hoursDialogOpen, setHoursDialogOpen] = useState(false);
+  const [hoursDialogActivity, setHoursDialogActivity] = useState<{ id: string; name: string; estimatedHours: number } | null>(null);
+  const [hoursDialogValue, setHoursDialogValue] = useState("");
   const [changeLog, setChangeLog] = useState<ChangeLogEntry[]>([]);
   const [logExpanded, setLogExpanded] = useState(false);
   // Cover photo viewer
@@ -149,6 +154,15 @@ export default function ProjectDetailPage() {
     load();
   }
 
+  function flattenActivities(acts: ProjectActivity[]): ProjectActivity[] {
+    const result: ProjectActivity[] = [];
+    for (const a of acts) {
+      result.push(a);
+      if (a.children) result.push(...flattenActivities(a.children));
+    }
+    return result;
+  }
+
   async function toggleComplete(id: string, complete: boolean) {
     if (isWorker) {
       // Workers batch their toggles — add/remove from pending set
@@ -156,37 +170,69 @@ export default function ProjectDetailPage() {
         const next = new Set(prev);
         if (next.has(id)) {
           next.delete(id); // undo the pending toggle
+          // Also remove pending hours
+          setPendingHours((ph) => {
+            const m = new Map(ph);
+            m.delete(id);
+            return m;
+          });
         } else {
           next.add(id);
+          // Pre-fill hours with estimate for tasks being completed
+          const flat = flattenActivities(project?.activities ?? []);
+          const act = flat.find((a) => a.id === id);
+          if (act && !(act.isComplete ?? false) && act.hours) {
+            setPendingHours((ph) => {
+              const m = new Map(ph);
+              m.set(id, String(act.hours));
+              return m;
+            });
+          }
         }
         return next;
       });
       return;
     }
-    // Coordinators/Owners save immediately
+    // Coordinators/Owners: if completing, show hours dialog
+    if (complete) {
+      const flat = flattenActivities(project?.activities ?? []);
+      const act = flat.find((a) => a.id === id);
+      setHoursDialogActivity({
+        id,
+        name: act?.name ?? "Task",
+        estimatedHours: act?.hours ?? 0,
+      });
+      setHoursDialogValue(act?.hours ? String(act.hours) : "");
+      setHoursDialogOpen(true);
+      return;
+    }
+    // Uncompleting — save immediately, no dialog needed
     await fetch(`/api/activities/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isComplete: complete }),
+      body: JSON.stringify({ isComplete: false }),
     });
+    load();
+  }
+
+  async function confirmHoursAndComplete() {
+    if (!hoursDialogActivity) return;
+    const hours = parseFloat(hoursDialogValue) || 0;
+    await fetch(`/api/activities/${hoursDialogActivity.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isComplete: true, actualHours: hours > 0 ? hours : null }),
+    });
+    setHoursDialogOpen(false);
+    setHoursDialogActivity(null);
+    setHoursDialogValue("");
     load();
   }
 
   async function saveWorkerProgress() {
     if (pendingToggles.size === 0) return;
     setSaving(true);
-    const activities = project?.activities ?? [];
-
-    // Flatten tree to find activity states
-    function flattenActivities(acts: ProjectActivity[]): ProjectActivity[] {
-      const result: ProjectActivity[] = [];
-      for (const a of acts) {
-        result.push(a);
-        if (a.children) result.push(...flattenActivities(a.children));
-      }
-      return result;
-    }
-    const flat = flattenActivities(activities);
+    const flat = flattenActivities(project?.activities ?? []);
 
     // Send each toggled activity
     const completedNames: string[] = [];
@@ -194,10 +240,16 @@ export default function ProjectDetailPage() {
       const act = flat.find((a) => a.id === actId);
       const newState = act ? !(act.isComplete ?? false) : true;
       if (newState && act) completedNames.push(act.name);
+      const payload: Record<string, unknown> = { isComplete: newState };
+      // Include actual hours for tasks being completed
+      if (newState) {
+        const hrs = parseFloat(pendingHours.get(actId) ?? "") || 0;
+        if (hrs > 0) payload.actualHours = hrs;
+      }
       await fetch(`/api/activities/${actId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isComplete: newState }),
+        body: JSON.stringify(payload),
       });
     }
 
@@ -211,6 +263,7 @@ export default function ProjectDetailPage() {
     }
 
     setPendingToggles(new Set());
+    setPendingHours(new Map());
     setWorkerNote("");
     setSaving(false);
     load();
@@ -613,6 +666,44 @@ export default function ProjectDetailPage() {
       {isWorker && pendingToggles.size > 0 && (
         <div className="sticky bottom-0 z-20 mb-4 -mx-4 sm:-mx-6 px-4 sm:px-6 pb-4 pt-3 bg-background/95 backdrop-blur border-t shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
           <div className="max-w-3xl mx-auto space-y-2">
+            {/* Inline hours inputs for tasks being completed */}
+            {(() => {
+              const flat = flattenActivities(project?.activities ?? []);
+              const completing = [...pendingToggles].filter((id) => {
+                const act = flat.find((a) => a.id === id);
+                return act && !(act.isComplete ?? false);
+              });
+              if (completing.length === 0) return null;
+              return (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground font-medium">Hours worked:</p>
+                  {completing.map((id) => {
+                    const act = flat.find((a) => a.id === id);
+                    return (
+                      <div key={id} className="flex items-center gap-2 text-sm">
+                        <span className="flex-1 min-w-0 truncate">{act?.name}</span>
+                        <Input
+                          type="number"
+                          step="0.25"
+                          min="0"
+                          value={pendingHours.get(id) ?? ""}
+                          onChange={(e) =>
+                            setPendingHours((ph) => {
+                              const m = new Map(ph);
+                              m.set(id, e.target.value);
+                              return m;
+                            })
+                          }
+                          placeholder="hrs"
+                          className="w-20 h-7 text-xs"
+                        />
+                        <span className="text-xs text-muted-foreground shrink-0">hrs</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             <Textarea
               value={workerNote}
               onChange={(e) => setWorkerNote(e.target.value)}
@@ -630,6 +721,7 @@ export default function ProjectDetailPage() {
                   size="sm"
                   onClick={() => {
                     setPendingToggles(new Set());
+                    setPendingHours(new Map());
                     setWorkerNote("");
                   }}
                   disabled={saving}
@@ -650,6 +742,39 @@ export default function ProjectDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Hours dialog for coordinator/owner completing a task */}
+      <Dialog open={hoursDialogOpen} onOpenChange={setHoursDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hours Worked</DialogTitle>
+            <DialogDescription>{hoursDialogActivity?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="completion-hours">Hours</Label>
+              <Input
+                id="completion-hours"
+                type="number"
+                step="0.25"
+                min="0"
+                value={hoursDialogValue}
+                onChange={(e) => setHoursDialogValue(e.target.value)}
+                placeholder={hoursDialogActivity?.estimatedHours ? `Est: ${hoursDialogActivity.estimatedHours}` : "0"}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setHoursDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmHoursAndComplete} className="bg-green-700 hover:bg-green-800">
+              Complete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Action buttons (coordinator+) */}
       {canEdit && (

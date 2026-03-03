@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { users, changeLog } from "@/db/schema";
+import { users, changeLog, userBillingRates } from "@/db/schema";
 import { asc, count, eq, desc, max, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPin } from "@/lib/auth-utils";
@@ -30,9 +30,26 @@ export async function GET() {
         .map((r) => [r.userId!, typeof r.lastAt === "string" ? r.lastAt : (r.lastAt as Date).toISOString()])
     );
 
+    // Fetch all billing rates in one query
+    const allRates = db
+      .select({
+        userId: userBillingRates.userId,
+        division: userBillingRates.division,
+        hourlyRate: userBillingRates.hourlyRate,
+      })
+      .from(userBillingRates)
+      .all();
+
+    const ratesMap = new Map<string, { division: string; hourlyRate: number }[]>();
+    for (const r of allRates) {
+      if (!ratesMap.has(r.userId)) ratesMap.set(r.userId, []);
+      ratesMap.get(r.userId)!.push({ division: r.division, hourlyRate: r.hourlyRate });
+    }
+
     const enriched = rows.map((u) => ({
       ...u,
       lastActivity: lastActivityMap.get(u.id) ?? null,
+      billingRates: ratesMap.get(u.id) ?? [],
     }));
 
     return NextResponse.json(enriched);

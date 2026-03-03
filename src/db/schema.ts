@@ -93,6 +93,7 @@ export const projectActivities = sqliteTable("project_activities", {
   isComplete: integer("is_complete", { mode: "boolean" }).default(false),
   completedBy: text("completed_by"), // user id who marked this complete
   completedAt: integer("completed_at", { mode: "timestamp" }), // when it was marked complete
+  actualHours: real("actual_hours"), // hours actually worked (entered on completion, separate from estimate)
   sortOrder: integer("sort_order").default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
     () => new Date()
@@ -137,6 +138,14 @@ export const changeLog = sqliteTable("change_log", {
   entityName: text("entity_name"), // name of the thing changed (for display)
   details: text("details"), // JSON or free text with extra info (e.g., "status: draft → active")
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+// ─── User Billing Rates (per division) ──────────────────────
+export const userBillingRates = sqliteTable("user_billing_rates", {
+  id: text("id").primaryKey().$defaultFn(() => createId()),
+  userId: text("user_id").notNull(),
+  division: text("division").notNull(), // yard_care, general_contracting, etc.
+  hourlyRate: real("hourly_rate").notNull(),
 });
 
 // ─── App Settings ────────────────────────────────────────────

@@ -119,6 +119,7 @@ export function ActivityRow({
           <div className="text-[11px] text-muted-foreground mt-0.5 italic">
             ✓ Completed by {activity.completedByName}
             {activity.completedAt ? `, ${formatCompletedDate(activity.completedAt)}` : ""}
+            {activity.actualHours != null && activity.actualHours > 0 ? ` · ${activity.actualHours}h` : ""}
           </div>
         )}
         {isPendingToggle && (

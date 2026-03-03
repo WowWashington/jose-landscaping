@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { users, userBillingRates } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPin } from "@/lib/auth-utils";
 import { getSessionUser } from "@/lib/get-session-user";
@@ -92,7 +92,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     // Hash PIN if provided
-    const updates = { ...body };
+    const { billingRates, ...rest } = body;
+    const updates = { ...rest };
     if (updates.pin) {
       updates.pin = await hashPin(updates.pin);
     }
@@ -103,6 +104,31 @@ export async function PUT(request: NextRequest, { params }: Params) {
       .where(eq(users.id, id))
       .returning()
       .get();
+
+    // Save billing rates if provided (owner or coordinator)
+    if (billingRates && Array.isArray(billingRates) && callerLevel >= 2) {
+      for (const rate of billingRates as { division: string; hourlyRate: number }[]) {
+        // Delete existing rate for this division, then insert
+        db.delete(userBillingRates)
+          .where(
+            and(
+              eq(userBillingRates.userId, id),
+              eq(userBillingRates.division, rate.division)
+            )
+          )
+          .run();
+
+        if (rate.hourlyRate > 0) {
+          db.insert(userBillingRates)
+            .values({
+              userId: id,
+              division: rate.division,
+              hourlyRate: rate.hourlyRate,
+            })
+            .run();
+        }
+      }
+    }
 
     return NextResponse.json(row);
   } catch (error) {
@@ -142,6 +168,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       );
     }
 
+    db.delete(userBillingRates).where(eq(userBillingRates.userId, id)).run();
     db.delete(users).where(eq(users.id, id)).run();
 
     return NextResponse.json({ success: true });

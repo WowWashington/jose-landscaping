@@ -12,6 +12,7 @@ const defaults = [
   { key: "businessAddress", value: "" },
   { key: "enableYardCare", value: "true" },
   { key: "enableContracting", value: "true" },
+  { key: "showBillingRates", value: "false" },
 ];
 
 const dbPath = process.env.DB_PATH || path.join(process.cwd(), "data", "jose.db");

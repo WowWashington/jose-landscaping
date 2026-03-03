@@ -24,7 +24,8 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useSettings } from "@/lib/use-settings";
 import type { AppUser } from "@/types";
-import { ROLE_LABELS } from "@/types";
+import { ROLE_LABELS, DIVISION_OPTIONS } from "@/types";
+import { formatCurrency } from "@/lib/calculations";
 import {
   Plus,
   X,
@@ -43,9 +44,11 @@ import {
   LogOut,
   ShieldCheck,
   Shield,
+  DollarSign,
 } from "lucide-react";
 
-type PersonWithActivity = AppUser & { lastActivity?: string | null };
+type BillingRate = { division: string; hourlyRate: number };
+type PersonWithActivity = AppUser & { lastActivity?: string | null; billingRates?: BillingRate[] };
 
 function formatLastSeen(isoStr: string): string {
   const d = new Date(isoStr);
@@ -103,6 +106,14 @@ export default function PeoplePage() {
     pin: "",
     role: "",
   });
+  const [formRates, setFormRates] = useState<Record<string, string>>({});
+
+  const canSeeRates = isOwner || (canEdit && settings.showBillingRates);
+  const enabledDivisions = DIVISION_OPTIONS.filter((d) => {
+    if (d.value === "yard_care") return settings.enableYardCare;
+    if (d.value === "general_contracting") return settings.enableContracting;
+    return true;
+  });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -118,6 +129,7 @@ export default function PeoplePage() {
 
   function resetForm() {
     setForm({ name: "", city: "", phone: "", availability: "", tasks: "", email: "", pin: "", role: "" });
+    setFormRates({});
     setShowForm(false);
     setEditingId(null);
   }
@@ -133,6 +145,11 @@ export default function PeoplePage() {
       pin: "",
       role: p.role ?? "",
     });
+    const rates: Record<string, string> = {};
+    for (const r of p.billingRates ?? []) {
+      rates[r.division] = String(r.hourlyRate);
+    }
+    setFormRates(rates);
     setEditingId(p.id);
     setShowForm(true);
   }
@@ -153,6 +170,14 @@ export default function PeoplePage() {
       body.email = form.email || null;
       body.role = form.role || null;
       if (form.pin) body.pin = form.pin;
+    }
+
+    // Billing rates (owner always, coordinator if setting enabled)
+    if (canSeeRates) {
+      body.billingRates = enabledDivisions.map((d) => ({
+        division: d.value,
+        hourlyRate: parseFloat(formRates[d.value] || "0") || 0,
+      }));
     }
 
     if (editingId) {
@@ -378,6 +403,38 @@ export default function PeoplePage() {
               />
             </div>
 
+            {/* Billing rates — owner always, coordinator if setting enabled */}
+            {canSeeRates && enabledDivisions.length > 0 && (
+              <div className="border-t pt-3 mt-2">
+                <p className="text-xs text-muted-foreground mb-2">Billing Rates</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {enabledDivisions.map((d) => (
+                    <div key={d.value}>
+                      <Label htmlFor={`rate-${d.value}`} className="text-sm">
+                        {d.icon} {d.label}
+                      </Label>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-xs text-muted-foreground">$</span>
+                        <Input
+                          id={`rate-${d.value}`}
+                          type="number"
+                          step="0.50"
+                          min="0"
+                          value={formRates[d.value] ?? ""}
+                          onChange={(e) =>
+                            setFormRates((r) => ({ ...r, [d.value]: e.target.value }))
+                          }
+                          placeholder="0.00"
+                          className="w-24"
+                        />
+                        <span className="text-xs text-muted-foreground">/hr</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Auth fields — owner only */}
             {isOwner && (
               <>
@@ -539,6 +596,12 @@ export default function PeoplePage() {
                     </div>
                   </div>
                   <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {canEdit && p.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-3.5 w-3.5" />
+                        <span>{p.email}</span>
+                      </div>
+                    )}
                     {p.phone && (
                       <div className="flex items-center gap-2">
                         <Phone className="h-3.5 w-3.5" />
@@ -563,7 +626,21 @@ export default function PeoplePage() {
                         <span className="line-clamp-2">{p.tasks}</span>
                       </div>
                     )}
-                    {p.lastActivity && (
+                    {canSeeRates && (p.billingRates ?? []).length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-3.5 w-3.5" />
+                        <span>
+                          {(p.billingRates ?? [])
+                            .filter((r) => enabledDivisions.some((d) => d.value === r.division))
+                            .map((r) => {
+                              const div = DIVISION_OPTIONS.find((d) => d.value === r.division);
+                              return `${div?.icon ?? ""} ${formatCurrency(r.hourlyRate)}/hr`;
+                            })
+                            .join("  ")}
+                        </span>
+                      </div>
+                    )}
+                    {canEdit && p.lastActivity && (
                       <div className="flex items-center gap-2">
                         <Eye className="h-3.5 w-3.5" />
                         <span>Last seen {formatLastSeen(p.lastActivity)}</span>

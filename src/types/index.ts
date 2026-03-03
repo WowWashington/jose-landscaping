@@ -75,6 +75,7 @@ export type ProjectActivity = {
   completedBy: string | null;
   completedByName?: string | null;
   completedAt: Date | null;
+  actualHours: number | null;
   sortOrder: number | null;
   createdAt: Date | null;
   children?: ProjectActivity[];

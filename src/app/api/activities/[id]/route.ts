@@ -40,6 +40,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       "quantity",
       "unit",
       "isComplete",
+      "actualHours",
       "sortOrder",
       "crewId",
     ] as const;
@@ -59,6 +60,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       } else {
         allowedFields.completedBy = null;
         allowedFields.completedAt = null;
+        allowedFields.actualHours = null;
       }
     }
 

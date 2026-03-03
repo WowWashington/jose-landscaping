@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { changeLog, projectActivities, projects, users } from "@/db/schema";
+import { changeLog, projectActivities, projects, users, userBillingRates } from "@/db/schema";
 import { and, gte, lt, eq, inArray, asc, isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/get-session-user";
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     const activityMap = new Map<
       string,
-      { hours: number | null; cost: number | null; quantity: number | null; isComplete: boolean | null }
+      { hours: number | null; cost: number | null; quantity: number | null; isComplete: boolean | null; actualHours: number | null; projectId: string }
     >();
     if (activityIds.length > 0) {
       const rows = db
@@ -99,6 +99,8 @@ export async function GET(request: NextRequest) {
           cost: projectActivities.cost,
           quantity: projectActivities.quantity,
           isComplete: projectActivities.isComplete,
+          actualHours: projectActivities.actualHours,
+          projectId: projectActivities.projectId,
         })
         .from(projectActivities)
         .where(inArray(projectActivities.id, activityIds))
@@ -126,7 +128,7 @@ export async function GET(request: NextRequest) {
 
     const projectMap = new Map<
       string,
-      { name: string; quoteNumber: string | null }
+      { name: string; quoteNumber: string | null; division: string | null }
     >();
     if (projectIds.length > 0) {
       const rows = db
@@ -134,12 +136,28 @@ export async function GET(request: NextRequest) {
           id: projects.id,
           name: projects.name,
           quoteNumber: projects.quoteNumber,
+          division: projects.division,
         })
         .from(projects)
         .where(inArray(projects.id, projectIds))
         .all();
       for (const p of rows) {
-        projectMap.set(p.id, { name: p.name, quoteNumber: p.quoteNumber });
+        projectMap.set(p.id, { name: p.name, quoteNumber: p.quoteNumber, division: p.division });
+      }
+    }
+
+    // Fetch all billing rates for users who completed tasks
+    const completionUserIds = [...new Set(completionEntries.map((e) => e.userId).filter((id): id is string => !!id))];
+    const billingRateMap = new Map<string, Map<string, number>>(); // userId -> division -> rate
+    if (completionUserIds.length > 0) {
+      const rateRows = db
+        .select()
+        .from(userBillingRates)
+        .where(inArray(userBillingRates.userId, completionUserIds))
+        .all();
+      for (const r of rateRows) {
+        if (!billingRateMap.has(r.userId)) billingRateMap.set(r.userId, new Map());
+        billingRateMap.get(r.userId)!.set(r.division, r.hourlyRate);
       }
     }
 
@@ -148,13 +166,17 @@ export async function GET(request: NextRequest) {
       activityId: string | null;
       activityName: string;
       hours: number;
+      actualHours: number | null;
       cost: number;
+      billingRate: number | null;
+      laborCost: number | null;
       completedAt: Date | null;
     };
     type ProjGroup = {
       tasks: TaskEntry[];
       totalHours: number;
       totalCost: number;
+      totalLaborCost: number;
     };
     type UserGroup = {
       userId: string;
@@ -175,7 +197,7 @@ export async function GET(request: NextRequest) {
 
       const pid = entry.projectId ?? "none";
       if (!userEntry.projectMap.has(pid)) {
-        userEntry.projectMap.set(pid, { tasks: [], totalHours: 0, totalCost: 0 });
+        userEntry.projectMap.set(pid, { tasks: [], totalHours: 0, totalCost: 0, totalLaborCost: 0 });
       }
       const projEntry = userEntry.projectMap.get(pid)!;
 
@@ -185,22 +207,35 @@ export async function GET(request: NextRequest) {
       const qty = activity?.quantity ?? 1;
       const hours = (activity?.hours ?? 0) * qty;
       const cost = (activity?.cost ?? 0) * qty;
+      const actualHours = activity?.actualHours ?? null;
+
+      // Look up billing rate: user's rate for the project's division
+      const projDivision = pid !== "none" ? projectMap.get(pid)?.division : null;
+      const userRates = billingRateMap.get(uid);
+      const billingRate = (userRates && projDivision) ? (userRates.get(projDivision) ?? null) : null;
+      const effectiveHours = actualHours ?? hours;
+      const laborCost = billingRate != null && effectiveHours > 0 ? effectiveHours * billingRate : null;
 
       projEntry.tasks.push({
         activityId: entry.activityId,
         activityName: entry.entityName ?? "Unknown task",
         hours,
+        actualHours,
         cost,
+        billingRate,
+        laborCost,
         completedAt: entry.createdAt,
       });
       projEntry.totalHours += hours;
       projEntry.totalCost += cost;
+      if (laborCost != null) projEntry.totalLaborCost += laborCost;
     }
 
     // 5. Build response
     let grandTotalTasks = 0;
     let grandTotalHours = 0;
     let grandTotalCost = 0;
+    let grandTotalLaborCost = 0;
     const allProjectIdsSet = new Set<string>();
 
     const people = [...userMap.values()]
@@ -215,6 +250,7 @@ export async function GET(request: NextRequest) {
             tasks: pd.tasks,
             totalHours: Math.round(pd.totalHours * 10) / 10,
             totalCost: Math.round(pd.totalCost * 100) / 100,
+            totalLaborCost: Math.round(pd.totalLaborCost * 100) / 100,
           };
         });
 
@@ -230,10 +266,15 @@ export async function GET(request: NextRequest) {
           (s, p) => s + p.totalCost,
           0
         );
+        const totalLaborCost = projectDetails.reduce(
+          (s, p) => s + p.totalLaborCost,
+          0
+        );
 
         grandTotalTasks += tasksCompleted;
         grandTotalHours += totalHours;
         grandTotalCost += totalCost;
+        grandTotalLaborCost += totalLaborCost;
 
         return {
           userId: u.userId,
@@ -241,6 +282,7 @@ export async function GET(request: NextRequest) {
           tasksCompleted,
           totalHours: Math.round(totalHours * 10) / 10,
           totalCost: Math.round(totalCost * 100) / 100,
+          totalLaborCost: Math.round(totalLaborCost * 100) / 100,
           projects: projectDetails,
         };
       })
@@ -355,6 +397,7 @@ export async function GET(request: NextRequest) {
         tasksCompleted: grandTotalTasks,
         totalHours: Math.round(grandTotalHours * 10) / 10,
         totalCost: Math.round(grandTotalCost * 100) / 100,
+        totalLaborCost: Math.round(grandTotalLaborCost * 100) / 100,
         projectCount: allProjectIdsSet.size,
       },
       scheduled,

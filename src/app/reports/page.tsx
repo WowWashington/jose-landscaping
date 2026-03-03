@@ -21,7 +21,10 @@ type TaskDetail = {
   activityId: string | null;
   activityName: string;
   hours: number;
+  actualHours: number | null;
   cost: number;
+  billingRate: number | null;
+  laborCost: number | null;
   completedAt: string | null;
 };
 
@@ -32,6 +35,7 @@ type ProjectDetail = {
   tasks: TaskDetail[];
   totalHours: number;
   totalCost: number;
+  totalLaborCost: number;
 };
 
 type PersonSummary = {
@@ -40,6 +44,7 @@ type PersonSummary = {
   tasksCompleted: number;
   totalHours: number;
   totalCost: number;
+  totalLaborCost: number;
   projects: ProjectDetail[];
 };
 
@@ -70,6 +75,7 @@ type ReportData = {
     tasksCompleted: number;
     totalHours: number;
     totalCost: number;
+    totalLaborCost: number;
     projectCount: number;
   };
   scheduled: ScheduledProject[];
@@ -213,6 +219,7 @@ export default function ReportsPage() {
         tasksCompleted: selectedPersonData.tasksCompleted,
         totalHours: selectedPersonData.totalHours,
         totalCost: selectedPersonData.totalCost,
+        totalLaborCost: selectedPersonData.totalLaborCost,
         projectCount: selectedPersonData.projects.length,
       }
     : data?.totals;
@@ -308,10 +315,10 @@ export default function ReportsPage() {
             <div className="rounded-lg border p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                 <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
-                Value
+                Labor Cost
               </div>
               <p className="text-2xl font-semibold">
-                {formatCurrency(displayTotals?.totalCost ?? 0)}
+                {formatCurrency(displayTotals?.totalLaborCost ?? 0)}
               </p>
             </div>
             <div className="rounded-lg border p-3">
@@ -349,7 +356,9 @@ export default function ReportsPage() {
                       {person.tasksCompleted !== 1 ? "s" : ""}
                     </span>
                     <span>{formatHours(person.totalHours)}</span>
-                    <span>{formatCurrency(person.totalCost)}</span>
+                    {person.totalLaborCost > 0 && (
+                      <span>{formatCurrency(person.totalLaborCost)}</span>
+                    )}
                     <span>
                       {person.projects.length} project
                       {person.projects.length !== 1 ? "s" : ""}
@@ -401,8 +410,8 @@ export default function ReportsPage() {
                       )}
                     </Link>
                     <span className="text-xs text-muted-foreground">
-                      {formatHours(proj.totalHours)} &middot;{" "}
-                      {formatCurrency(proj.totalCost)}
+                      {formatHours(proj.totalHours)}
+                      {proj.totalLaborCost > 0 && ` · ${formatCurrency(proj.totalLaborCost)}`}
                     </span>
                   </div>
                   <div className="divide-y">
@@ -418,9 +427,9 @@ export default function ReportsPage() {
                           </span>
                         </div>
                         <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                          {task.hours > 0 && formatHours(task.hours)}
-                          {task.hours > 0 && task.cost > 0 && " · "}
-                          {task.cost > 0 && formatCurrency(task.cost)}
+                          {(task.actualHours ?? task.hours) > 0 && formatHours(task.actualHours ?? task.hours)}
+                          {task.billingRate != null && task.billingRate > 0 && ` @ ${formatCurrency(task.billingRate)}/hr`}
+                          {task.laborCost != null && task.laborCost > 0 && ` · ${formatCurrency(task.laborCost)}`}
                         </span>
                       </div>
                     ))}

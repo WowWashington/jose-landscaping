@@ -10,6 +10,7 @@ export type AppSettings = {
   businessAddress: string;
   enableYardCare: boolean;
   enableContracting: boolean;
+  showBillingRates: boolean;
 };
 
 export const defaultSettings: AppSettings = {
@@ -20,6 +21,7 @@ export const defaultSettings: AppSettings = {
   businessAddress: "",
   enableYardCare: true,
   enableContracting: true,
+  showBillingRates: false,
 };
 
 export function useSettings(): { settings: AppSettings; loading: boolean; refresh: () => void } {
@@ -38,6 +40,7 @@ export function useSettings(): { settings: AppSettings; loading: boolean; refres
           businessAddress: data.businessAddress ?? "",
           enableYardCare: data.enableYardCare !== "false",
           enableContracting: data.enableContracting !== "false",
+          showBillingRates: data.showBillingRates === "true",
         });
         setLoading(false);
       })

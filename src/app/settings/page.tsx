@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [businessAddress, setBusinessAddress] = useState("");
   const [enableYardCare, setEnableYardCare] = useState(true);
   const [enableContracting, setEnableContracting] = useState(true);
+  const [showBillingRates, setShowBillingRates] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -50,6 +51,7 @@ export default function SettingsPage() {
         }
         setEnableYardCare(data.enableYardCare !== "false");
         setEnableContracting(data.enableContracting !== "false");
+        setShowBillingRates(data.showBillingRates === "true");
         setLoaded(true);
       });
   }, []);
@@ -83,6 +85,11 @@ export default function SettingsPage() {
     if (!checked && !enableYardCare) return;
     setEnableContracting(checked);
     await saveSetting("enableContracting", String(checked));
+  }
+
+  async function toggleBillingRates(checked: boolean) {
+    setShowBillingRates(checked);
+    await saveSetting("showBillingRates", String(checked));
   }
 
   if (authLoading || !loaded) {
@@ -260,6 +267,24 @@ export default function SettingsPage() {
             id="mask-contacts"
             checked={maskContacts}
             onCheckedChange={toggleMask}
+            disabled={saving}
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="billing-rates" className="text-sm font-medium">
+              Allow Coordinators to see Billing Rates
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              When enabled, coordinators can view worker billing rates on the People page.
+              Owners can always see rates.
+            </p>
+          </div>
+          <Switch
+            id="billing-rates"
+            checked={showBillingRates}
+            onCheckedChange={toggleBillingRates}
             disabled={saving}
           />
         </div>
